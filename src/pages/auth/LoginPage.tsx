@@ -5,6 +5,8 @@ import { User } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { PhoneAuth } from '../../components/auth';
+import { createUser } from '../../services/firestore';
+import { Timestamp } from 'firebase/firestore';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -72,6 +74,18 @@ const LoginPage: React.FC = () => {
       if (result.error) {
         setError(result.error);
       } else if (result.user) {
+        // Check if user exists in Firestore
+        const userDoc = await getDoc(doc(db, 'users', result.user.uid));
+        if (!userDoc.exists()) {
+          // Create user document with default values
+          await createUser(result.user.uid, {
+            displayName: result.user.displayName || '',
+            email: result.user.email || '',
+            role: 'customer', // Default role, adjust if needed
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now()
+          });
+        }
         await handleRedirect(result.user);
       }
     } catch (err: any) {
