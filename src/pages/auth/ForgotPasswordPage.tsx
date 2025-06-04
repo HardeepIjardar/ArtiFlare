@@ -1,20 +1,45 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { resetUserPassword } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Get email from location state if available
+  useEffect(() => {
+    const state = location.state as { email?: string };
+    if (state?.email) {
+      setEmail(state.email);
+    }
+  }, [location]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
     
-    // Simulate API request
-    setTimeout(() => {
+    try {
+      const { success, error } = await resetUserPassword(email);
+      
+      if (error) {
+        setError(error);
+        return;
+      }
+      
+      if (success) {
+        setSubmitted(true);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset email');
+    } finally {
       setIsLoading(false);
-      setSubmitted(true);
-    }, 1000);
+    }
   };
 
   return (
@@ -30,25 +55,31 @@ const ForgotPasswordPage: React.FC = () => {
           </div>
           
           {!submitted ? (
-            <form className="mt-8 space-y-6 animate-fadeIn" style={{ animationDelay: '0.1s' }} onSubmit={handleSubmit}>
-              <div className="transform transition duration-300 ease-in-out hover:translate-y-[-2px]">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email address
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out focus:shadow-md"
-                  placeholder="name@example.com"
-                />
-              </div>
+            <>
+              {error && (
+                <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md animate-fadeIn">
+                  <p className="text-red-700 text-sm">{error}</p>
+                </div>
+              )}
+              
+              <form className="mt-8 space-y-6 animate-fadeIn" style={{ animationDelay: '0.1s' }} onSubmit={handleSubmit}>
+                <div className="transform transition duration-300 ease-in-out hover:translate-y-[-2px]">
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email address
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out focus:shadow-md"
+                    placeholder="name@example.com"
+                  />
+                </div>
 
-              <div>
                 <button
                   type="submit"
                   disabled={isLoading}
@@ -66,8 +97,8 @@ const ForgotPasswordPage: React.FC = () => {
                     "Send Reset Link"
                   )}
                 </button>
-              </div>
-            </form>
+              </form>
+            </>
           ) : (
             <div className="text-center py-8 animate-scaleIn">
               <div className="mx-auto h-16 w-16 rounded-full bg-primary-50 flex items-center justify-center animate-pulse">
@@ -98,7 +129,7 @@ const ForgotPasswordPage: React.FC = () => {
                   Resend Email
                 </button>
               </div>
-              <p className="mt-4 text-sm text-gray-500 animate-fadeIn" style={{ animationDelay: '0.5s' }}>
+              <p className="mt-4 text-sm text-gray-600 animate-fadeIn" style={{ animationDelay: '0.5s' }}>
                 Didn't receive the email? Check your spam folder or{' '}
                 <button
                   onClick={() => setSubmitted(false)}
@@ -126,7 +157,7 @@ const ForgotPasswordPage: React.FC = () => {
       </div>
       
       {/* Right side - Image/Banner - Fixed, non-scrollable */}
-      <div className="hidden md:block md:w-1/2 bg-primary animate-slideRight fixed right-0 top-0 h-screen">
+      <div className="hidden md:block w-1/2 bg-primary min-h-screen">
         <div className="h-full flex items-center justify-center p-12">
           <div className="max-w-md text-white">
             <h3 className="text-2xl font-bold mb-4">Password Recovery</h3>

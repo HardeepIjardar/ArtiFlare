@@ -46,19 +46,22 @@ const LoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setIsLoading(true);
-    
+    setError(null);
+
     try {
-      const result = await login(email, password);
+      const { user, error } = await login(email, password);
       
-      if (result.error) {
-        setError(result.error);
-      } else if (result.user) {
-        await handleRedirect(result.user);
+      if (error) {
+        setError(error);
+        return;
+      }
+
+      if (user) {
+        await handleRedirect(user);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to login');
+      setError(err.message || 'An error occurred during login');
     } finally {
       setIsLoading(false);
     }

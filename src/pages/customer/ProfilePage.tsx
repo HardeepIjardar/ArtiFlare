@@ -2,48 +2,49 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUserData } from '../../services/firestore';
+import ChangePassword from '../../components/auth/ChangePassword';
+import type { UserData } from '../../services/firestore';
 
 const ProfilePage: React.FC = () => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
-  const [userData, setUserData] = useState<any>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!currentUser) return;
-      
+      if (!currentUser) {
+        navigate('/login');
+        return;
+      }
+
       try {
-        setIsLoading(true);
         const data = await getUserData(currentUser.uid);
-        if (data && !data.error) {
-          setUserData(data);
-        } else if (data?.error) {
-          setError(data.error);
-        }
-      } catch (err: any) {
-        setError(err.message || 'Failed to load user data');
+        setUserData(data);
+      } catch (err) {
+        console.error('Failed to fetch user data:', err);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchUserData();
-  }, [currentUser]);
+  }, [currentUser, navigate]);
 
   const handleLogout = async () => {
     try {
       await logout();
       navigate('/login');
-    } catch (error: any) {
-      setError(error.message || 'Failed to log out');
+    } catch (error) {
+      console.error('Failed to logout:', error);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto p-6">
         <div className="flex justify-center items-center h-40">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
@@ -188,7 +189,10 @@ const ProfilePage: React.FC = () => {
         <div className="p-6">
           <h2 className="text-lg font-bold text-dark mb-4">Account Settings</h2>
           <div className="space-y-4">
-            <button className="text-dark hover:text-dark-700 flex items-center">
+            <button 
+              onClick={() => setShowChangePassword(!showChangePassword)}
+              className="text-dark hover:text-dark-700 flex items-center"
+            >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
@@ -212,6 +216,21 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {showChangePassword && (
+        <div className="mt-6">
+          <ChangePassword 
+            onSuccess={() => {
+              setShowChangePassword(false);
+              // You can add a success notification here
+            }}
+            onError={(error) => {
+              // You can add an error notification here
+              console.error('Password change error:', error);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };

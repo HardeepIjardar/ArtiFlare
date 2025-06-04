@@ -13,7 +13,8 @@ import {
   User,
   RecaptchaVerifier,
   signInWithPhoneNumber,
-  PhoneAuthProvider
+  PhoneAuthProvider,
+  updatePassword
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -166,6 +167,15 @@ const verifyPhoneCode = async (confirmationResult: any, code: string) => {
   }
 };
 
+const updateUserPassword = async (user: User, newPassword: string) => {
+  try {
+    await updatePassword(user, newPassword);
+    return { success: true, error: null };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
 // Current user subscription
 const subscribeToAuthChanges = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
@@ -189,5 +199,6 @@ export {
   subscribeToAuthChanges,
   loginWithPhoneNumber,
   verifyPhoneCode,
-  RecaptchaVerifier
+  RecaptchaVerifier,
+  updateUserPassword
 }; 

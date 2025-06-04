@@ -20,7 +20,8 @@ import {
   resetPassword,
   loginWithPhoneNumber,
   verifyPhoneCode,
-  RecaptchaVerifier
+  RecaptchaVerifier,
+  updateUserPassword
 } from '../services/firebase';
 import { auth } from '../services/firebase';
 
@@ -37,6 +38,7 @@ interface AuthContextType {
   updateCurrentUser: (user: User | null) => void;
   phoneLogin: (phoneNumber: string, recaptchaVerifier: RecaptchaVerifier) => Promise<{ confirmationResult: any; error: string | null }>;
   verifyPhoneCode: (confirmationResult: any, code: string) => Promise<{ user: User | null; error: string | null }>;
+  updatePassword: (newPassword: string) => Promise<{ success: boolean; error: string | null }>;
 }
 
 // Create the context with a default value
@@ -126,6 +128,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updatePassword = async (newPassword: string) => {
+    if (!currentUser) {
+      return { success: false, error: 'No user is currently logged in' };
+    }
+    return updateUserPassword(currentUser, newPassword);
+  };
+
   const value = {
     currentUser,
     isLoading,
@@ -137,7 +146,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     resetUserPassword,
     updateCurrentUser,
     phoneLogin,
-    verifyPhoneCode
+    verifyPhoneCode,
+    updatePassword
   };
 
   return (
