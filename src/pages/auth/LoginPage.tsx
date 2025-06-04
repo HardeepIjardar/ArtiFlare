@@ -179,7 +179,11 @@ const LoginPage: React.FC = () => {
                       Remember me
                     </label>
                   </div>
-                  <Link to="/forgot-password" className="text-sm font-medium text-primary hover:text-primary-700 transition-colors duration-300">
+                  <Link 
+                    to="/forgot-password" 
+                    state={{ email }}
+                    className="text-sm font-medium text-primary hover:text-primary-700 transition-colors duration-300"
+                  >
                     Forgot password?
                   </Link>
                 </div>
