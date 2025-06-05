@@ -78,13 +78,16 @@ export interface UserData {
   role: 'customer' | 'artisan' | 'admin';
   createdAt?: Date;
   updatedAt?: Date;
-  address?: {
+  addresses?: {
+    id: string;
     street: string;
     city: string;
     state: string;
     zipCode: string;
     country: string;
-  };
+    isDefault: boolean;
+    label?: string; // e.g., "Home", "Work", etc.
+  }[];
   bio?: string;
   companyName?: string;
   isVerified?: boolean;
@@ -98,11 +101,14 @@ export interface UserData {
 
 // Validation schemas
 const addressSchema = z.object({
+  id: z.string(),
   street: z.string().min(1, 'Street is required'),
   city: z.string().min(1, 'City is required'),
   state: z.string().min(1, 'State is required'),
   zipCode: z.string().min(1, 'Zip code is required'),
-  country: z.string().min(1, 'Country is required')
+  country: z.string().min(1, 'Country is required'),
+  isDefault: z.boolean(),
+  label: z.string().optional()
 });
 
 const userSchema = z.object({

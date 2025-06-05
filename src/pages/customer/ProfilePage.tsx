@@ -120,21 +120,34 @@ const ProfilePage: React.FC = () => {
                 <p className="text-dark">{userData?.phoneNumber || 'Not provided'}</p>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-dark-500">Default Shipping Address</h3>
-                {userData?.address && (userData.address.street || userData.address.city) ? (
-                  <>
-                    <p className="text-dark">{userData.address.street || ''}</p>
-                    <p className="text-dark">
-                      {userData.address.city ? `${userData.address.city}, ` : ''}
-                      {userData.address.state || ''} {userData.address.zipCode || ''}
-                    </p>
-                    <p className="text-dark-500">{userData.address.country || ''}</p>
-                  </>
+                <h3 className="text-sm font-medium text-dark-500">Shipping Addresses</h3>
+                {userData?.addresses && userData.addresses.length > 0 ? (
+                  <div className="space-y-4 mt-2">
+                    {userData.addresses.map((address) => (
+                      <div key={address.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-dark">{address.label || 'Address'}</p>
+                            <p className="text-dark-600">{address.street}</p>
+                            <p className="text-dark-600">
+                              {address.city}, {address.state} {address.zipCode}
+                            </p>
+                            <p className="text-dark-600">{address.country}</p>
+                          </div>
+                          {address.isDefault && (
+                            <span className="bg-primary-100 text-primary text-xs px-2 py-1 rounded">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  <p className="text-dark-500 italic">No address provided</p>
+                  <p className="text-dark-500 italic">No addresses provided</p>
                 )}
-                <Link to="/profile/edit" className="text-primary text-sm hover:text-primary-700 mt-1 inline-block">
-                  {userData?.address && (userData.address.street || userData.address.city) ? 'Update Address' : 'Add Address'}
+                <Link to="/profile/edit" className="text-primary text-sm hover:text-primary-700 mt-2 inline-block">
+                  {userData?.addresses && userData.addresses.length > 0 ? 'Manage Addresses' : 'Add Address'}
                 </Link>
               </div>
             </div>
