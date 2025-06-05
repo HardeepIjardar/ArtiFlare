@@ -14,7 +14,9 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber,
   PhoneAuthProvider,
-  updatePassword
+  updatePassword,
+  browserLocalPersistence,
+  setPersistence
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -22,13 +24,13 @@ import { getAnalytics } from 'firebase/analytics';
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyD0iSHDuOcPrm-yEaNm9zFxGma1gJENa2k",
-  authDomain: "artiflare-001-35be5.firebaseapp.com",
-  projectId: "artiflare-001-35be5",
-  storageBucket: "artiflare-001-35be5.firebasestorage.app",
-  messagingSenderId: "115283598563",
-  appId: "1:115283598563:web:ffda51f61ebf8088e279d6",
-  measurementId: "G-2V6V0S1P77"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyD0iSHDuOcPrm-yEaNm9zFxGma1gJENa2k",
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "artiflare-001-35be5.firebaseapp.com",
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "artiflare-001-35be5",
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "artiflare-001-35be5.firebasestorage.app",
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "115283598563",
+  appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:115283598563:web:ffda51f61ebf8088e279d6",
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID || "G-2V6V0S1P77"
 };
 
 // Initialize Firebase and services
@@ -37,6 +39,12 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 const analytics = getAnalytics(app);
+
+// Set persistence to local
+setPersistence(auth, browserLocalPersistence)
+  .catch((error) => {
+    console.error("Auth persistence error:", error);
+  });
 
 // Authentication providers
 const googleProvider = new GoogleAuthProvider();
@@ -118,6 +126,26 @@ const loginWithPhoneNumber = async (phoneNumber: string, recaptchaVerifier: Reca
       throw new Error('Invalid phone number format');
     }
 
+    // Ensure reCAPTCHA is rendered
+    try {
+      await recaptchaVerifier.render();
+    } catch (renderError) {
+      console.error('reCAPTCHA render error:', renderError);
+      throw new Error('Failed to initialize reCAPTCHA');
+    }
+
+    // Get the reCAPTCHA token
+    try {
+      const token = await recaptchaVerifier.verify();
+      if (!token) {
+        throw new Error('reCAPTCHA verification failed');
+      }
+    } catch (verifyError) {
+      console.error('reCAPTCHA verify error:', verifyError);
+      throw new Error('reCAPTCHA verification failed');
+    }
+
+    // Send verification code
     const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
     return { confirmationResult, error: null };
   } catch (error: any) {
@@ -130,6 +158,8 @@ const loginWithPhoneNumber = async (phoneNumber: string, recaptchaVerifier: Reca
       errorMessage = 'Too many attempts. Please try again later';
     } else if (error.code === 'auth/quota-exceeded') {
       errorMessage = 'SMS quota exceeded. Please try again later';
+    } else if (error.code === 'auth/invalid-app-credential') {
+      errorMessage = 'reCAPTCHA verification failed. Please try again.';
     } else if (error.message) {
       errorMessage = error.message;
     }

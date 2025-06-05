@@ -49,25 +49,45 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
   // Initialize reCAPTCHA when component mounts
   useEffect(() => {
     if (showRecaptcha && recaptchaContainerRef.current && !recaptchaVerifierRef.current) {
-      recaptchaVerifierRef.current = new RecaptchaVerifier(
-        recaptchaContainerRef.current,
-        {
-          size: 'normal',
-          callback: () => {
-            setRecaptchaSolved(true);
-            setError(null);
-          },
-          'expired-callback': () => {
-            setRecaptchaSolved(false);
-            setError('reCAPTCHA expired. Please try again.');
-          },
-        },
-        auth
-      );
-      recaptchaVerifierRef.current.render().catch((err) => {
-        console.error('reCAPTCHA render error:', err);
+      try {
+        // Create new reCAPTCHA verifier
+        recaptchaVerifierRef.current = new RecaptchaVerifier(
+          auth,
+          recaptchaContainerRef.current,
+          {
+            size: 'normal',
+            callback: () => {
+              setRecaptchaSolved(true);
+              setError(null);
+            },
+            'expired-callback': () => {
+              setRecaptchaSolved(false);
+              setError('reCAPTCHA expired. Please try again.');
+              if (recaptchaVerifierRef.current) {
+                recaptchaVerifierRef.current.clear();
+                recaptchaVerifierRef.current = null;
+              }
+            },
+          }
+        );
+
+        // Render the reCAPTCHA widget
+        recaptchaVerifierRef.current.render().catch((err) => {
+          console.error('reCAPTCHA render error:', err);
+          setError('Failed to initialize reCAPTCHA. Please refresh the page.');
+          if (recaptchaVerifierRef.current) {
+            recaptchaVerifierRef.current.clear();
+            recaptchaVerifierRef.current = null;
+          }
+        });
+      } catch (err) {
+        console.error('reCAPTCHA initialization error:', err);
         setError('Failed to initialize reCAPTCHA. Please refresh the page.');
-      });
+        if (recaptchaVerifierRef.current) {
+          recaptchaVerifierRef.current.clear();
+          recaptchaVerifierRef.current = null;
+        }
+      }
     }
     return () => {
       if (recaptchaVerifierRef.current) {
@@ -172,12 +192,6 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
       return;
     }
 
-    // If reCAPTCHA is shown but not solved, do not proceed
-    if (!recaptchaSolved) {
-      setError('Please complete the reCAPTCHA verification');
-      return;
-    }
-
     setIsLoading(true);
     setCodeStep(true);
 
@@ -187,6 +201,44 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
       }
 
       const fullPhone = `${selectedCountryCode}${phoneNumber}`;
+      
+      // Ensure reCAPTCHA is solved before proceeding
+      if (!recaptchaSolved) {
+        throw new Error('Please complete the reCAPTCHA verification');
+      }
+
+      // Reset reCAPTCHA state before sending code
+      setRecaptchaSolved(false);
+      
+      // Clear any existing reCAPTCHA
+      if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+      }
+
+      // Create new reCAPTCHA verifier for this attempt
+      recaptchaVerifierRef.current = new RecaptchaVerifier(
+        auth,
+        recaptchaContainerRef.current!,
+        {
+          size: 'normal',
+          callback: () => {
+            setRecaptchaSolved(true);
+            setError(null);
+          },
+          'expired-callback': () => {
+            setRecaptchaSolved(false);
+            setError('reCAPTCHA expired. Please try again.');
+            if (recaptchaVerifierRef.current) {
+              recaptchaVerifierRef.current.clear();
+              recaptchaVerifierRef.current = null;
+            }
+          },
+        }
+      );
+
+      // Render the reCAPTCHA widget
+      await recaptchaVerifierRef.current.render();
+      
       const confirmation = await phoneLogin(fullPhone, recaptchaVerifierRef.current);
       
       if (confirmation.error) {
@@ -199,17 +251,19 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
     } catch (err: any) {
       const message = err.message || '';
       if (
+        err.code === 'auth/invalid-app-credential' ||
         err.code === 'auth/timeout' ||
         message.toLowerCase().includes('timeout') ||
         message.toLowerCase().includes('expired')
       ) {
+        // Reset reCAPTCHA on invalid credential
         setShowRecaptcha(false);
         setRecaptchaSolved(false);
         if (recaptchaVerifierRef.current) {
           recaptchaVerifierRef.current.clear();
           recaptchaVerifierRef.current = null;
         }
-        setError('reCAPTCHA expired. Please try again.');
+        setError('reCAPTCHA verification failed. Please try again.');
         return;
       }
       setError(message || 'Failed to send verification code');
@@ -280,12 +334,12 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
               <div 
                 ref={recaptchaContainerRef} 
                 className="mb-4 flex justify-center" 
-                style={{ minHeight: 78 }}
+                style={{ minHeight: '78px', width: '100%' }}
               />
             )}
             <button
               type="submit"
-              disabled={isLoading || !phoneNumber}
+              disabled={isLoading || !phoneNumber || !recaptchaSolved}
               className="w-full py-3 rounded-lg bg-primary text-white disabled:opacity-50"
             >
               {isLoading ? 'Sending...' : 'Send Verification Code'}
