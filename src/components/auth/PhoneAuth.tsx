@@ -248,6 +248,24 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
       setConfirmationResult(confirmation.confirmationResult);
       setResendAvailable(false);
       setTimer(60);
+      
+      // Start the resend timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      timerRef.current = setInterval(() => {
+        setTimer((prev) => {
+          if (prev <= 1) {
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+            }
+            setResendAvailable(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
     } catch (err: any) {
       const message = err.message || '';
       if (
@@ -272,6 +290,15 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
       setIsLoading(false);
     }
   };
+
+  // Cleanup timer on component unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
 
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -356,6 +383,9 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
                 placeholder="Enter 6-digit code"
                 className="w-full px-4 py-3 border rounded-lg"
                 required
+                maxLength={6}
+                pattern="[0-9]{6}"
+                title="Please enter the 6-digit verification code"
               />
               <div className="flex justify-end mt-1">
                 {!resendAvailable ? (
@@ -373,12 +403,17 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
             </div>
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full py-3 rounded-lg bg-primary text-white"
+              disabled={isLoading || !verificationCode}
+              className="w-full py-3 rounded-lg bg-primary text-white disabled:opacity-50"
             >
               {isLoading ? 'Verifying...' : 'Verify Code'}
             </button>
           </>
+        )}
+        {error && (
+          <div className="text-red-500 text-sm mt-2">
+            {error}
+          </div>
         )}
       </form>
     </div>
