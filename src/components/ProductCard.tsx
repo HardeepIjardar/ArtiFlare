@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Product } from '../services/firestore';
+import { useAuth } from '../contexts/AuthContext';
+import { db } from '../services/firebase';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { FaHeart, FaRegHeart } from 'react-icons/fa';
 
 interface ProductCardProps {
   product: Product;
@@ -24,6 +28,47 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onDecrement
 }) => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const [wishlisted, setWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+
+  // Check if product is in wishlist
+  useEffect(() => {
+    if (!currentUser) return;
+    const fetchWishlist = async () => {
+      const ref = doc(db, 'wishlists', currentUser.uid);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data();
+        setWishlisted(data.products?.includes(product.id));
+      } else {
+        setWishlisted(false);
+      }
+    };
+    fetchWishlist();
+  }, [currentUser, product.id]);
+
+  // Toggle wishlist
+  const handleWishlist = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentUser) return; // Optionally prompt login
+    setWishlistLoading(true);
+    const ref = doc(db, 'wishlists', currentUser.uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      if (wishlisted) {
+        await updateDoc(ref, { products: arrayRemove(product.id) });
+        setWishlisted(false);
+      } else {
+        await updateDoc(ref, { products: arrayUnion(product.id) });
+        setWishlisted(true);
+      }
+    } else {
+      await setDoc(ref, { products: [product.id] });
+      setWishlisted(true);
+    }
+    setWishlistLoading(false);
+  };
 
   // Handler for card click (excluding cart controls)
   const handleCardClick = (e: React.MouseEvent) => {
@@ -34,13 +79,24 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <div
-      className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 flex flex-col transition-all duration-200 hover:shadow-lg hover:border-primary focus-within:shadow-lg focus-within:border-primary group cursor-pointer"
+      className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 flex flex-col transition-all duration-200 hover:shadow-lg hover:border-primary focus-within:shadow-lg focus-within:border-primary group cursor-pointer relative"
       onClick={handleCardClick}
       tabIndex={0}
       role="button"
       aria-label={`View details for ${product.name}`}
       onKeyDown={e => { if (e.key === 'Enter') handleCardClick(e as any); }}
     >
+      {/* Heart Icon for Wishlist */}
+      {currentUser && (
+        <button
+          className="absolute top-2 right-2 z-10 text-red-500 bg-white bg-opacity-80 rounded-full p-1 shadow hover:bg-opacity-100 transition"
+          onClick={handleWishlist}
+          disabled={wishlistLoading}
+          aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+        >
+          {wishlisted ? <FaHeart size={22} /> : <FaRegHeart size={22} />}
+        </button>
+      )}
       <div className="relative mb-3">
         <div className="h-52 w-full rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center border border-gray-100">
           <img
