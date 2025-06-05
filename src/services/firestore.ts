@@ -662,7 +662,7 @@ export const getProductById = async (productId: string) => {
     const productRef = doc(db, 'products', productId);
     const productDoc = await getDoc(productRef);
     if (!productDoc.exists()) {
-      throw new FirestoreError('Product not found');
+      throw new FirestoreError('Product not found', 'not-found');
     }
     const data = productDoc.data();
     return {
@@ -670,7 +670,8 @@ export const getProductById = async (productId: string) => {
       ...data
     } as ProductData;
   } catch (error) {
-    throw new FirestoreError('Error getting product', error);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new FirestoreError(message, 'error');
   }
 };
 
@@ -719,10 +720,8 @@ export const getUserData = async (userId: string) => {
       ...data
     } as UserData;
   } catch (error) {
-    if (error instanceof Error) {
-      throw new FirestoreError(error.message, 'error');
-    }
-    throw new FirestoreError('Error getting user data', 'error');
+    const message = error instanceof Error ? error.message : String(error);
+    throw new FirestoreError(message, 'error');
   }
 };
 
@@ -733,8 +732,9 @@ export const updateUserProfile = async (userId: string, userData: Partial<UserDa
       ...userData,
       updatedAt: Timestamp.now()
     });
-  } catch (error) {
-    throw new FirestoreError('Error updating user profile', error);
+    return { success: true, error: null };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Error updating user profile' };
   }
 };
 
