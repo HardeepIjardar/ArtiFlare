@@ -101,13 +101,9 @@ const LoginPage: React.FC = () => {
   const handlePhoneAuthSuccess = async (user: User) => {
     try {
       setIsLoading(true);
-      // Check if user already has a displayName in Firestore
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (!userDoc.exists() || !userDoc.data().displayName) {
-        // Update Firestore with the provided name
-        const { updateUserProfile } = await import('../../services/firestore');
-        await updateUserProfile(user.uid, { displayName: phoneName });
-      }
+      // Always update Firestore with the provided name
+      const { updateUserProfile } = await import('../../services/firestore');
+      await updateUserProfile(user.uid, { displayName: phoneName });
       await handleRedirect(user);
     } catch (error: any) {
       setError(error.message || 'Failed to complete login');

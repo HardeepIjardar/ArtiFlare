@@ -123,25 +123,27 @@ const ProfilePage: React.FC = () => {
                 <h3 className="text-sm font-medium text-dark-500">Shipping Addresses</h3>
                 {userData?.addresses && userData.addresses.length > 0 ? (
                   <div className="space-y-4 mt-2">
-                    {userData.addresses.map((address) => (
-                      <div key={address.id} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-medium text-dark">{address.label || 'Address'}</p>
-                            <p className="text-dark-600">{address.street}</p>
-                            <p className="text-dark-600">
-                              {address.city}, {address.state} {address.zipCode}
-                            </p>
-                            <p className="text-dark-600">{address.country}</p>
+                    {userData.addresses
+                      .filter((address) => address.isDefault)
+                      .map((address) => (
+                        <div key={address.id} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="font-medium text-dark">{address.label || 'Address'}</p>
+                              <p className="text-dark-600">{address.street}</p>
+                              <p className="text-dark-600">
+                                {address.city}, {address.state} {address.zipCode}
+                              </p>
+                              <p className="text-dark-600">{address.country}</p>
+                            </div>
+                            {address.isDefault && (
+                              <span className="bg-primary-100 text-primary text-xs px-2 py-1 rounded">
+                                Default
+                              </span>
+                            )}
                           </div>
-                          {address.isDefault && (
-                            <span className="bg-primary-100 text-primary text-xs px-2 py-1 rounded">
-                              Default
-                            </span>
-                          )}
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 ) : (
                   <p className="text-dark-500 italic">No addresses provided</p>
