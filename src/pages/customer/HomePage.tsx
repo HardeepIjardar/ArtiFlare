@@ -77,8 +77,8 @@ const OccasionCard: React.FC<OccasionCardProps> = ({ title, link, icon }) => (
 );
 
 // Occasions Section
-const OccasionsSection = () => (
-  <div className="px-4 sm:px-6 lg:px-8 mt-12">
+const OccasionsSection = React.forwardRef<HTMLDivElement>((props, ref) => (
+  <div ref={ref} id="occasions-section" className="px-4 sm:px-6 lg:px-8 mt-12 scroll-mt-24">
     <div className="max-w-7xl mx-auto">
       <h2 className="text-xl sm:text-2xl font-bold text-dark mb-6">Browse by Occasion</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -105,7 +105,7 @@ const OccasionsSection = () => (
       </div>
     </div>
   </div>
-);
+));
 
 // SOS Gifts Section
 const SOSGiftsSection = () => (
@@ -171,6 +171,7 @@ const HomePage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
   const [sortBy, setSortBy] = useState('');
+  const occasionsSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -282,7 +283,7 @@ const HomePage: React.FC = () => {
   return (
     <div>
       <HeroSection />
-      <OccasionsSection />
+      <OccasionsSection ref={occasionsSectionRef} />
       <SOSGiftsSection />
       {/* All Products Section */}
       <div className="px-4 sm:px-6 lg:px-8 mt-12">

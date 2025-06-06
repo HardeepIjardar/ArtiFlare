@@ -7,6 +7,7 @@ import { User } from 'firebase/auth';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { UserType, FormErrors, RegistrationForm } from '../../types';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -26,6 +27,8 @@ const RegisterPage: React.FC = () => {
   
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -319,42 +322,60 @@ const RegisterPage: React.FC = () => {
               </div>
 
               {/* Password */}
-              <div>
+              <div className="relative">
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                   Password
                 </label>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   id="password"
                   name="password"
                   value={form.password}
                   onChange={handleChange}
                   className={`appearance-none relative block w-full px-4 py-3 border ${
                     errors.password ? 'border-red-300' : 'border-gray-300'
-                  } rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300`}
+                  } rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 pr-12`}
                   placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  className="absolute right-3 top-12 transform -translate-y-1/2 text-gray-400 hover:text-primary focus:outline-none"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
                 {errors.password && (
                   <p className="mt-1 text-sm text-red-600">{errors.password}</p>
                 )}
               </div>
 
               {/* Confirm Password */}
-              <div>
+              <div className="relative">
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
                   Confirm Password
                 </label>
                 <input
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   id="confirmPassword"
                   name="confirmPassword"
                   value={form.confirmPassword}
                   onChange={handleChange}
                   className={`appearance-none relative block w-full px-4 py-3 border ${
                     errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                  } rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300`}
+                  } rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 pr-12`}
                   placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  className="absolute right-3 top-12 transform -translate-y-1/2 text-gray-400 hover:text-primary focus:outline-none"
+                  tabIndex={-1}
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
                 {errors.confirmPassword && (
                   <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
                 )}

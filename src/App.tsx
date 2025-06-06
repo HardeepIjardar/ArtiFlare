@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider, useCart } from './contexts/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import ScrollToTop from './ScrollToTop';
 
 // Layout components
 import MainLayout from './layouts/MainLayout';
@@ -21,6 +22,13 @@ import ProfilePage from './pages/customer/ProfilePage';
 import WishlistPage from './pages/customer/WishlistPage';
 import EditProfilePage from './pages/customer/EditProfilePage';
 import SearchPage from './pages/customer/SearchPage';
+import AboutPage from './pages/customer/AboutPage';
+import ContactPage from './pages/customer/ContactPage';
+import FAQPage from './pages/customer/FAQPage';
+import ShippingPage from './pages/customer/ShippingPage';
+import ReturnsPage from './pages/customer/ReturnsPage';
+import PrivacyPage from './pages/customer/PrivacyPage';
+import TermsPage from './pages/customer/TermsPage';
 
 // Auth pages
 import LoginPage from './pages/auth/LoginPage';
@@ -105,6 +113,13 @@ function RoutesWithAuth() {
         <Route path="occasions" element={<OccasionsPage />} />
         <Route path="occasions/:occasion" element={<OccasionDetailPage />} />
         <Route path="how-it-works" element={<HowItWorksPage />} />
+        <Route path="about" element={<AboutPage />} />
+        <Route path="contact" element={<ContactPage />} />
+        <Route path="faq" element={<FAQPage />} />
+        <Route path="shipping" element={<ShippingPage />} />
+        <Route path="returns" element={<ReturnsPage />} />
+        <Route path="privacy" element={<PrivacyPage />} />
+        <Route path="terms" element={<TermsPage />} />
         <Route path="cart" element={<CartPage />} />
       </Route>
 
@@ -154,6 +169,7 @@ function RoutesWithAuth() {
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <AuthProvider>
         <CartProvider>
           <RoutesWithAuth />

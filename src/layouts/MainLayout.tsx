@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, createContext } from 'react';
+import React, { useState, useRef, useEffect, createContext, useCallback } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { FaUserCircle, FaShoppingCart } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
@@ -143,6 +143,29 @@ const MainLayout: React.FC = () => {
     navigate(`/search?q=${encodeURIComponent(query.trim())}`);
     setTimeout(() => setIsSearching(false), 500);
   };
+
+  const handleFooterOccasionClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    if (location.pathname === '/') {
+      const section = document.getElementById('occasions-section');
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      navigate('/', { state: { scrollToOccasion: true } });
+    }
+  }, [location, navigate]);
+
+  useEffect(() => {
+    if (location.state?.scrollToOccasion) {
+      const section = document.getElementById('occasions-section');
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth' });
+      }
+      // Remove the state after scrolling
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
 
   return (
     <SearchContext.Provider value={{
@@ -324,7 +347,7 @@ const MainLayout: React.FC = () => {
                     <Link to="/products" className="text-gray-400 hover:text-primary transition-colors duration-300">All Products</Link>
                   </li>
                   <li>
-                    <Link to="/occasions" className="text-gray-400 hover:text-primary transition-colors duration-300">Shop by Occasion</Link>
+                    <a href="#occasions-section" onClick={handleFooterOccasionClick} className="text-gray-400 hover:text-primary transition-colors duration-300">Shop by Occasion</a>
                   </li>
                   <li>
                     <Link to="/how-it-works" className="text-gray-400 hover:text-primary transition-colors duration-300">How It Works</Link>

@@ -7,6 +7,7 @@ import { db } from '../../services/firebase';
 import { PhoneAuth } from '../../components/auth';
 import { createUser } from '../../services/firestore';
 import { Timestamp } from 'firebase/firestore';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -18,6 +19,7 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [phoneName, setPhoneName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   // Get the redirect path from location state or default to home
   const from = (location.state as any)?.from?.pathname || '/';
@@ -150,39 +152,28 @@ const LoginPage: React.FC = () => {
               </div>
 
               {/* Password */}
-              <div>
+              <div className="relative">
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                   Password
                 </label>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   id="password"
                   name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
+                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 pr-12"
                   placeholder="••••••••"
                 />
-                <div className="flex items-center justify-between mt-2">
-                  <div className="flex items-center">
-                    <input
-                      id="remember-me"
-                      name="remember-me"
-                      type="checkbox"
-                      className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                    />
-                    <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                      Remember me
-                    </label>
-                  </div>
-                  <Link 
-                    to="/forgot-password" 
-                    state={{ email }}
-                    className="text-sm font-medium text-primary hover:text-primary-700 transition-colors duration-300"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
+                <button
+                  type="button"
+                  className="absolute right-3 top-12 transform -translate-y-1/2 text-gray-400 hover:text-primary focus:outline-none"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
               </div>
 
               {/* Submit Button */}

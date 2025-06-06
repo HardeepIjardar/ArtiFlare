@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 interface ChangePasswordProps {
   onSuccess?: () => void;
@@ -15,6 +16,9 @@ const ChangePassword: React.FC<ChangePasswordProps> = ({ onSuccess, onError }) =
     newPassword: '',
     confirmPassword: ''
   });
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -76,49 +80,76 @@ const ChangePassword: React.FC<ChangePasswordProps> = ({ onSuccess, onError }) =
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
+        <div className="relative">
           <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">
             Current Password
           </label>
           <input
-            type="password"
+            type={showCurrent ? "text" : "password"}
             id="currentPassword"
             name="currentPassword"
             value={form.currentPassword}
             onChange={handleChange}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary pr-10"
             required
           />
+          <button
+            type="button"
+            className="absolute right-3 top-12 transform -translate-y-1/2 text-gray-400 hover:text-primary focus:outline-none"
+            tabIndex={-1}
+            onClick={() => setShowCurrent((v) => !v)}
+            aria-label={showCurrent ? 'Hide password' : 'Show password'}
+          >
+            {showCurrent ? <FaEyeSlash /> : <FaEye />}
+          </button>
         </div>
 
-        <div>
+        <div className="relative">
           <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
             New Password
           </label>
           <input
-            type="password"
+            type={showNew ? "text" : "password"}
             id="newPassword"
             name="newPassword"
             value={form.newPassword}
             onChange={handleChange}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary pr-10"
             required
           />
+          <button
+            type="button"
+            className="absolute right-3 top-12 transform -translate-y-1/2 text-gray-400 hover:text-primary focus:outline-none"
+            tabIndex={-1}
+            onClick={() => setShowNew((v) => !v)}
+            aria-label={showNew ? 'Hide password' : 'Show password'}
+          >
+            {showNew ? <FaEyeSlash /> : <FaEye />}
+          </button>
         </div>
 
-        <div>
+        <div className="relative">
           <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
             Confirm New Password
           </label>
           <input
-            type="password"
+            type={showConfirm ? "text" : "password"}
             id="confirmPassword"
             name="confirmPassword"
             value={form.confirmPassword}
             onChange={handleChange}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary pr-10"
             required
           />
+          <button
+            type="button"
+            className="absolute right-3 top-12 transform -translate-y-1/2 text-gray-400 hover:text-primary focus:outline-none"
+            tabIndex={-1}
+            onClick={() => setShowConfirm((v) => !v)}
+            aria-label={showConfirm ? 'Hide password' : 'Show password'}
+          >
+            {showConfirm ? <FaEyeSlash /> : <FaEye />}
+          </button>
         </div>
 
         <button
