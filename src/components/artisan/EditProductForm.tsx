@@ -141,7 +141,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
           
           <div>
             <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-              Price ($)*
+              Price (₹)*
             </label>
             <input
               id="price"
@@ -158,7 +158,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
           
           <div>
             <label htmlFor="discountedPrice" className="block text-sm font-medium text-gray-700 mb-1">
-              Discounted Price ($)
+              Discounted Price (₹)
             </label>
             <input
               id="discountedPrice"

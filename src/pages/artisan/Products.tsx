@@ -138,13 +138,13 @@ const ArtisanProducts: React.FC = () => {
           placeholder="Search products..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+          className="flex-1 appearance-none relative block px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
         />
         
         <select
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+          className="appearance-none relative block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
         >
           <option value="">All Categories</option>
           <option value="jewelry">Jewelry</option>
@@ -213,9 +213,13 @@ const ArtisanProducts: React.FC = () => {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-dark">{product.price.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</div>
-                    {product.discountedPrice && (
-                      <div className="text-sm text-dark-500 line-through">{product.discountedPrice.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</div>
+                    {product.discountedPrice && product.discountedPrice < product.price ? (
+                      <>
+                        <div className="text-sm text-primary font-bold">{product.discountedPrice.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</div>
+                        <div className="text-sm text-dark-500 line-through">{product.price.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</div>
+                      </>
+                    ) : (
+                      <div className="text-sm text-dark">{product.price.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</div>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
