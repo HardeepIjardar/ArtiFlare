@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getUserData } from '../../services/firestore';
 import ChangePassword from '../../components/auth/ChangePassword';
 import type { UserData } from '../../services/firestore';
+import Modal from '../../components/common/Modal';
 
 const ProfilePage: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -233,7 +234,11 @@ const ProfilePage: React.FC = () => {
       </div>
 
       {showChangePassword && (
-        <div className="mt-6">
+        <Modal
+          isOpen={showChangePassword}
+          onClose={() => setShowChangePassword(false)}
+          title="Change Password"
+        >
           <ChangePassword 
             onSuccess={() => {
               setShowChangePassword(false);
@@ -244,7 +249,7 @@ const ProfilePage: React.FC = () => {
               console.error('Password change error:', error);
             }}
           />
-        </div>
+        </Modal>
       )}
     </div>
   );

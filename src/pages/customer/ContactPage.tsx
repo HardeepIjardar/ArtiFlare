@@ -11,10 +11,7 @@ const ContactPage: React.FC = () => (
         <strong>Email:</strong> <a href="mailto:support@artiflare.com" className="text-primary underline">support@artiflare.com</a>
       </li>
       <li className="mb-2">
-        <strong>Phone:</strong> <a href="tel:+1234567890" className="text-primary underline">+1 (234) 567-890</a>
-      </li>
-      <li className="mb-2">
-        <strong>Address:</strong> 123 Artisan Lane, Creators City, CA 90000
+        <strong>Phone:</strong> <a href="tel:+917201906714" className="text-primary underline">+91 72019 06714</a>
       </li>
     </ul>
     <p className="mb-4">Or fill out the form below and we'll get back to you as soon as possible:</p>
