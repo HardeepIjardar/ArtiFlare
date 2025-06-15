@@ -523,17 +523,17 @@ const CheckoutPage: React.FC = () => {
                 <span className="text-dark-500">Products ({cartItems.length})</span>
                 <span className="text-dark font-medium">₹{cartTotal.toFixed(2)}</span>
               </div>
-              <div className="py-2 flex justify-between">
-                <span className="text-dark-500">Shipping</span>
-                <span className="text-dark font-medium">₹{shippingCost.toFixed(2)}</span>
+              <div className="flex justify-between py-2">
+                <span className="text-dark-600">Shipping</span>
+                <span className="ml-auto text-dark">{shippingCost.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
               </div>
-              <div className="py-2 flex justify-between">
-                <span className="text-dark-500">Tax</span>
-                <span className="text-dark font-medium">₹{tax.toFixed(2)}</span>
+              <div className="flex justify-between py-2">
+                <span className="text-dark-600">Tax (8%)</span>
+                <span className="ml-auto text-dark">{tax.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
               </div>
-              <div className="py-2 flex justify-between">
-                <span className="text-dark font-bold">Total</span>
-                <span className="text-primary font-bold">₹{orderTotal.toFixed(2)}</span>
+              <div className="flex justify-between pt-4 mt-4 border-t border-gray-200">
+                <span className="text-lg font-bold text-dark">Order Total</span>
+                <span className="ml-auto text-primary font-bold">{orderTotal.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
               </div>
             </div>
             <button className="w-full bg-primary hover:bg-primary-700 text-white font-bold py-2 px-4 rounded mt-6">

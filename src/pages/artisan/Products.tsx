@@ -213,9 +213,9 @@ const ArtisanProducts: React.FC = () => {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-dark">${product.price.toFixed(2)}</div>
+                    <div className="text-sm text-dark">{product.price.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</div>
                     {product.discountedPrice && (
-                      <div className="text-sm text-dark-500 line-through">${product.discountedPrice.toFixed(2)}</div>
+                      <div className="text-sm text-dark-500 line-through">{product.discountedPrice.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</div>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

@@ -111,7 +111,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <h3 className="font-semibold text-dark text-base leading-tight truncate mb-1" title={product.name}>{product.name}</h3>
         <p className="text-dark-400 text-xs mb-2 truncate">by {artisanName}</p>
         <div className="flex items-center justify-between mb-3">
-          <span className="text-primary font-bold text-lg">${product.price.toFixed(2)}</span>
+          <span className="text-primary font-bold text-lg">{product.price.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
           {showQuantitySelector ? (
             <div className="flex items-center space-x-1 bg-gray-100 rounded px-2 py-1">
               <button

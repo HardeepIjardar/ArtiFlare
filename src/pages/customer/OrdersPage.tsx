@@ -114,14 +114,14 @@ const OrdersPage: React.FC = () => {
                     )}
                   </div>
                   <div className="md:w-1/4 text-right">
-                    <p className="text-primary font-bold">${item.totalPrice.toFixed(2)}</p>
+                    <p className="text-primary font-bold">{item.totalPrice.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
                     <p className="text-dark-500 text-sm">Qty: {item.quantity}</p>
                   </div>
                 </div>
               ))}
               <div className="px-6 py-4 flex flex-col md:flex-row md:justify-between md:items-center">
                 <div className="text-dark-600 text-sm mb-2 md:mb-0">
-                  <span className="font-medium">Total:</span> ${order.total.toFixed(2)}
+                  <span className="font-medium">Total:</span> {order.total.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
                 </div>
                 <div className="flex space-x-4">
                   <Link

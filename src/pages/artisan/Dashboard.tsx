@@ -18,7 +18,7 @@ const Dashboard: React.FC = () => {
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <p className="text-dark-500 font-medium">Revenue</p>
-          <p className="text-3xl font-bold text-dark mt-2">$1,230</p>
+          <p className="text-3xl font-bold text-dark mt-2">{1230..toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
           <p className="text-sage-500 text-sm mt-2">+8% from last month</p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
@@ -66,7 +66,7 @@ const Dashboard: React.FC = () => {
               <tr>
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">#1089</td>
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">John Smith</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">$129.00</td>
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">{129.00.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
                 <td className="px-4 py-4 whitespace-nowrap">
                   <span className="px-2 py-1 text-xs rounded-full bg-sage-100 text-sage-800">
                     Shipped
@@ -77,7 +77,7 @@ const Dashboard: React.FC = () => {
               <tr>
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">#1088</td>
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">Sarah Jones</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">$79.99</td>
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">{79.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
                 <td className="px-4 py-4 whitespace-nowrap">
                   <span className="px-2 py-1 text-xs rounded-full bg-primary-100 text-primary-800">
                     Processing
@@ -88,7 +88,7 @@ const Dashboard: React.FC = () => {
               <tr>
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">#1087</td>
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">Michael Brown</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">$159.00</td>
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">{159.00.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
                 <td className="px-4 py-4 whitespace-nowrap">
                   <span className="px-2 py-1 text-xs rounded-full bg-sage-100 text-sage-800">
                     Shipped

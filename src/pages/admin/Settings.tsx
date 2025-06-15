@@ -201,7 +201,7 @@ const AdminSettings: React.FC = () => {
             
             <div>
               <label htmlFor="payout-threshold" className="block text-sm font-medium text-dark">
-                Payout Threshold ($)
+                Payout Threshold (₹)
               </label>
               <div className="mt-1">
                 <input

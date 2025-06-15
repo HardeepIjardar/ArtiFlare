@@ -108,7 +108,7 @@ const AdminProducts: React.FC = () => {
                 <div className="text-sm text-dark">Home & Living</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-dark">$34.99</div>
+                <div className="text-sm text-dark">{34.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -138,7 +138,7 @@ const AdminProducts: React.FC = () => {
                 <div className="text-sm text-dark">Home & Living</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-dark">$29.99</div>
+                <div className="text-sm text-dark">{29.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -168,7 +168,7 @@ const AdminProducts: React.FC = () => {
                 <div className="text-sm text-dark">Home & Living</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-dark">$24.99</div>
+                <div className="text-sm text-dark">{24.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
@@ -198,7 +198,7 @@ const AdminProducts: React.FC = () => {
                 <div className="text-sm text-dark">Home & Living</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-dark">$39.99</div>
+                <div className="text-sm text-dark">{39.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
@@ -228,7 +228,7 @@ const AdminProducts: React.FC = () => {
                 <div className="text-sm text-dark">Home & Living</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-dark">$42.99</div>
+                <div className="text-sm text-dark">{42.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">

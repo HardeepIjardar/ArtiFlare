@@ -8,7 +8,7 @@ const ArtisanEarnings: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-sm font-medium text-dark-500">Total Earnings</h2>
-          <p className="mt-2 text-3xl font-bold text-dark">$4,385.23</p>
+          <p className="mt-2 text-3xl font-bold text-dark">{4385.23.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
           <div className="mt-1 flex items-center text-sm text-green-600">
             <svg className="flex-shrink-0 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
@@ -19,7 +19,7 @@ const ArtisanEarnings: React.FC = () => {
         
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-sm font-medium text-dark-500">This Month</h2>
-          <p className="mt-2 text-3xl font-bold text-dark">$1,245.80</p>
+          <p className="mt-2 text-3xl font-bold text-dark">{1245.80.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
           <div className="mt-1 flex items-center text-sm text-green-600">
             <svg className="flex-shrink-0 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
@@ -30,7 +30,7 @@ const ArtisanEarnings: React.FC = () => {
         
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-sm font-medium text-dark-500">Available for Withdrawal</h2>
-          <p className="mt-2 text-3xl font-bold text-dark">$985.42</p>
+          <p className="mt-2 text-3xl font-bold text-dark">{985.42.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
           <div className="mt-2">
             <button className="text-white bg-primary hover:bg-primary-700 px-4 py-2 rounded text-sm">
               Withdraw Funds
@@ -103,7 +103,7 @@ const ArtisanEarnings: React.FC = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
-                <span className="text-green-600">+$34.99</span>
+                <span className="text-green-600">+{34.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
               </td>
             </tr>
             
@@ -123,7 +123,7 @@ const ArtisanEarnings: React.FC = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
-                <span className="text-green-600">+$29.99</span>
+                <span className="text-green-600">+{29.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
               </td>
             </tr>
             
@@ -143,7 +143,7 @@ const ArtisanEarnings: React.FC = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
-                <span className="text-red-600">-$250.00</span>
+                <span className="text-red-600">-{250.00.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
               </td>
             </tr>
             
@@ -163,7 +163,7 @@ const ArtisanEarnings: React.FC = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
-                <span className="text-green-600">+$74.97</span>
+                <span className="text-green-600">+{74.97.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
               </td>
             </tr>
             
@@ -183,7 +183,7 @@ const ArtisanEarnings: React.FC = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
-                <span className="text-red-600">-$24.99</span>
+                <span className="text-red-600">-{24.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
               </td>
             </tr>
           </tbody>

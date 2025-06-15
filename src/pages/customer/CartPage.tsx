@@ -109,7 +109,7 @@ const CartPage: React.FC = () => {
                           <span>+</span>
                         </button>
                       </div>
-                      <p className="text-primary font-bold">${(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="text-primary font-bold">{(item.price * item.quantity).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
                     </div>
                   </div>
                   <button 
@@ -130,19 +130,19 @@ const CartPage: React.FC = () => {
             <div className="divide-y divide-gray-200">
               <div className="py-2 flex justify-between">
                 <span className="text-dark-500">Subtotal</span>
-                <span className="text-dark font-medium">${cartTotal.toFixed(2)}</span>
+                <span className="text-dark font-medium">{cartTotal.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
               </div>
               <div className="py-2 flex justify-between">
                 <span className="text-dark-500">Shipping</span>
-                <span className="text-dark font-medium">${shippingCost.toFixed(2)}</span>
+                <span className="text-dark font-medium">{shippingCost.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
               </div>
               <div className="py-2 flex justify-between">
                 <span className="text-dark-500">Tax</span>
-                <span className="text-dark font-medium">${tax.toFixed(2)}</span>
+                <span className="text-dark font-medium">{tax.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
               </div>
               <div className="py-2 flex justify-between">
                 <span className="text-dark font-bold">Total</span>
-                <span className="text-primary font-bold">${orderTotal.toFixed(2)}</span>
+                <span className="text-primary font-bold">{orderTotal.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
               </div>
             </div>
             <div className="mt-6">

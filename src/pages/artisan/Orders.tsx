@@ -60,7 +60,7 @@ const ArtisanOrders: React.FC = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
-                $34.99
+                {34.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <a href="#" className="text-primary hover:text-primary-700">View</a>
@@ -84,7 +84,7 @@ const ArtisanOrders: React.FC = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
-                $29.99
+                {29.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <a href="#" className="text-primary hover:text-primary-700">View</a>
@@ -108,7 +108,7 @@ const ArtisanOrders: React.FC = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
-                $74.97
+                {74.97.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <a href="#" className="text-primary hover:text-primary-700">View</a>
@@ -132,7 +132,7 @@ const ArtisanOrders: React.FC = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
-                $24.99
+                {24.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <a href="#" className="text-primary hover:text-primary-700">View</a>

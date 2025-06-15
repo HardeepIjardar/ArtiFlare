@@ -239,11 +239,11 @@ const ProductDetailPage: React.FC = () => {
             <div className="mb-6 flex items-center space-x-4">
               {product.discountedPrice ? (
                 <>
-                  <span className="text-primary text-2xl font-bold">${product.discountedPrice.toFixed(2)}</span>
-                  <span className="text-dark-500 line-through text-lg">${product.price.toFixed(2)}</span>
+                  <span className="text-primary text-2xl font-bold">{product.discountedPrice.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
+                  <span className="text-dark-500 line-through text-lg">{product.price.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
                 </>
               ) : (
-                <span className="text-primary text-2xl font-bold">${product.price.toFixed(2)}</span>
+                <span className="text-primary text-2xl font-bold">{product.price.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
               )}
               <span className="ml-4 text-sm text-dark-500">In stock: {product.inventory}</span>
             </div>

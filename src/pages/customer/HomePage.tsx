@@ -123,7 +123,7 @@ const SOSGiftsSection = () => (
               <div className="ml-4 flex-grow">
                 <h3 className="font-bold text-dark text-sm">Express Flower Bouquet</h3>
                 <p className="text-dark-500 text-sm">Delivery in 3 hours</p>
-                <p className="text-primary font-bold mt-2">$49</p>
+                <p className="text-primary font-bold mt-2">{(49).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
               </div>
             </div>
           </div>
