@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { createUser } from '../../services/firestore';
+import { createUser, UserData } from '../../services/firestore';
 import { UserProfileSetup, PhoneAuth } from '../../components/auth';
-import { User } from 'firebase/auth';
+import { User, updateProfile } from 'firebase/auth';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { UserType, FormErrors, RegistrationForm } from '../../types';
@@ -90,21 +90,12 @@ const RegisterPage: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const getUserRole = async (user: User) => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        return userDoc.data().role;
-      }
-      return 'customer'; // Default role if not found
-    } catch (error) {
-      console.error('Error fetching user role:', error);
-      return 'customer'; // Default role on error
-    }
+  const getUserRole = async (userData: UserData) => {
+    return userData.role; // Directly use the role from the UserData object
   };
 
-  const handleRedirect = async (user: User) => {
-    const role = await getUserRole(user);
+  const handleRedirect = async (userData: UserData) => {
+    const role = await getUserRole(userData);
     if (role === 'artisan') {
       navigate('/artisan');
     } else {
@@ -126,8 +117,14 @@ const RegisterPage: React.FC = () => {
           setErrors({ form: result.error });
           setIsLoading(false);
         } else if (result.user) {
+          console.log('Registering user:', result.user.uid, 'with display name:', form.name);
+          // Update the user's display name in Firebase Auth
+          await updateProfile(result.user, {
+            displayName: form.name
+          });
+
           // Create user document in Firestore with role
-          await createUser(result.user.uid, {
+          const firestoreResult = await createUser(result.user.uid, {
             displayName: form.name,
             email: form.email,
             role: userType === 'buyer' ? 'customer' : 'artisan',
@@ -137,8 +134,13 @@ const RegisterPage: React.FC = () => {
             updatedAt: Timestamp.now()
           });
 
-          // Redirect based on role
-          await handleRedirect(result.user);
+          if (firestoreResult.success && firestoreResult.userData) {
+            // Redirect based on role using the returned userData
+            await handleRedirect(firestoreResult.userData);
+          } else {
+            // Handle the case where Firestore user creation failed or returned no data
+            setErrors({ form: firestoreResult.error?.message || 'Firestore user creation failed.' });
+          }
           
           // Reset form fields
           setForm({
@@ -166,17 +168,31 @@ const RegisterPage: React.FC = () => {
       if (result.error) {
         setErrors({ form: result.error });
       } else if (result.user) {
+        const googleDisplayName = result.user.displayName || form.name || result.user.email?.split('@')[0] || 'User';
+        console.log('Google signup user:', result.user.uid, 'with display name:', googleDisplayName);
+        // Ensure display name is set in Firebase Auth
+        if (!result.user.displayName) {
+          await updateProfile(result.user, {
+            displayName: googleDisplayName
+          });
+        }
+
         // Create user document in Firestore with role
-        await createUser(result.user.uid, {
-          displayName: result.user.displayName || '',
+        const firestoreResult = await createUser(result.user.uid, {
+          displayName: googleDisplayName,
           email: result.user.email || '',
           role: userType === 'buyer' ? 'customer' : 'artisan',
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now()
         });
 
-        // Redirect based on role
-        await handleRedirect(result.user);
+        if (firestoreResult.success && firestoreResult.userData) {
+          // Redirect based on role using the returned userData
+          await handleRedirect(firestoreResult.userData);
+        } else {
+          // Handle the case where Firestore user creation failed or returned no data
+          setErrors({ form: firestoreResult.error?.message || 'Firestore user creation failed.' });
+        }
       }
     } catch (error: any) {
       setErrors({ form: error.message || 'Google sign-up failed' });
@@ -189,9 +205,18 @@ const RegisterPage: React.FC = () => {
     try {
       setIsLoading(true);
       
+      // Define display name for phone auth
+      const phoneDisplayName = form.name || user.phoneNumber || 'User';
+      console.log('Phone auth success for user:', user.uid, 'with display name:', phoneDisplayName);
+
+      // Update the user's display name in Firebase Auth
+      await updateProfile(user, {
+        displayName: phoneDisplayName
+      });
+      
       // Create user document in Firestore with role
-      await createUser(user.uid, {
-        displayName: form.name,
+      const firestoreResult = await createUser(user.uid, {
+        displayName: phoneDisplayName,
         phoneNumber: user.phoneNumber || undefined,
         role: userType === 'buyer' ? 'customer' : 'artisan',
         companyName: userType === 'artisan' ? form.companyName : undefined,
@@ -199,8 +224,13 @@ const RegisterPage: React.FC = () => {
         updatedAt: Timestamp.now()
       });
 
-      // Redirect based on role
-      await handleRedirect(user);
+      if (firestoreResult.success && firestoreResult.userData) {
+        // Redirect based on role using the returned userData
+        await handleRedirect(firestoreResult.userData);
+      } else {
+        // Handle the case where Firestore user creation failed or returned no data
+        setErrors({ form: firestoreResult.error?.message || 'Firestore user creation failed.' });
+      }
     } catch (error: any) {
       setErrors({ form: error.message || 'Failed to complete registration' });
     } finally {

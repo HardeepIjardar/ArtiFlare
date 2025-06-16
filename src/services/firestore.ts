@@ -1,31 +1,31 @@
-import { initializeApp } from 'firebase/app';
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  updateDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
+import {
+  collection,
+  doc,
+  setDoc,
+  updateDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
   deleteDoc,
   Timestamp,
-  addDoc,
   DocumentData,
   QueryConstraint,
   serverTimestamp,
   writeBatch,
   runTransaction,
   QueryDocumentSnapshot,
-  DocumentSnapshot,
   startAfter,
   Query,
   getCountFromServer
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { z } from 'zod';
+
+// Define the roles for users
+export type UserRole = 'customer' | 'artisan' | 'admin';
 
 // Type definitions
 export interface ProductData {
@@ -39,8 +39,8 @@ export interface ProductData {
   category: string;
   subcategory?: string;
   artisanId: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: Timestamp | Date;
+  updatedAt?: Timestamp | Date;
   inventory: number;
   attributes?: {
     size?: string[];
@@ -77,8 +77,8 @@ export interface UserData {
   photoURL?: string;
   phoneNumber?: string;
   role: 'customer' | 'artisan' | 'admin';
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: Timestamp | Date;
+  updatedAt?: Timestamp | Date;
   addresses?: {
     id: string;
     street: string;
@@ -87,91 +87,17 @@ export interface UserData {
     zipCode: string;
     country: string;
     isDefault: boolean;
-    label?: string | null; // e.g., "Home", "Work", etc. - now allows null
+    label?: string | null; // e.g., "Home", "Work", etc. - NOW ALLOWS NULL
   }[];
   bio?: string;
   companyName?: string;
   isVerified?: boolean;
-  lastLogin?: Date;
+  lastLogin?: Timestamp | Date;
   preferences?: {
     notifications: boolean;
     emailUpdates: boolean;
     theme: string;
   };
-}
-
-// Validation schemas
-const addressSchema = z.object({
-  id: z.string(),
-  street: z.string().min(1, 'Street is required'),
-  city: z.string().min(1, 'City is required'),
-  state: z.string().min(1, 'State is required'),
-  zipCode: z.string().min(1, 'Zip code is required'),
-  country: z.string().min(1, 'Country is required'),
-  isDefault: z.boolean(),
-  label: z.string().nullable().optional() // Allow null for optional label
-});
-
-const userSchema = z.object({
-  uid: z.string(),
-  displayName: z.string().min(1, 'Display name is required'),
-  email: z.string().email('Invalid email'),
-  photoURL: z.string().optional(),
-  phoneNumber: z.string().optional(),
-  role: z.enum(['customer', 'artisan', 'admin']),
-  createdAt: z.instanceof(Timestamp),
-  updatedAt: z.instanceof(Timestamp),
-  address: addressSchema.optional(),
-  bio: z.string().optional(),
-  companyName: z.string().optional()
-});
-
-const productSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, 'Product name is required'),
-  description: z.string().min(1, 'Description is required'),
-  price: z.number().positive('Price must be positive'),
-  discountedPrice: z.number().positive('Discounted price must be positive').optional(),
-  currency: z.string(),
-  images: z.array(z.string()).min(1, 'At least one image is required'),
-  category: z.string().min(1, 'Category is required'),
-  subcategory: z.string().optional(),
-  artisanId: z.string(),
-  createdAt: z.instanceof(Date),
-  updatedAt: z.instanceof(Date),
-  inventory: z.number().int().min(0, 'Inventory cannot be negative'),
-  attributes: z.record(z.any()),
-  tags: z.array(z.string()),
-  isCustomizable: z.boolean(),
-  averageRating: z.number().min(0).max(5).optional(),
-  totalReviews: z.number().int().min(0).optional(),
-  occasion: z.string().optional(),
-  materials: z.array(z.string()).optional()
-});
-
-// Type definitions (using Zod inferred types)
-export type Address = z.infer<typeof addressSchema>;
-export type User = z.infer<typeof userSchema>;
-export type Product = z.infer<typeof productSchema>;
-
-// Add missing type definitions
-export interface Order {
-  id: string;
-  userId: string;
-  items: OrderItem[];
-  total: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-  shippingAddress: Address;
-  paymentMethod: string;
-  paymentStatus: 'pending' | 'paid' | 'failed';
-  shippingMethod: string;
-  shippingCost: number;
-  discount?: number;
-  tax?: number;
-  trackingNumber?: string;
-  notes?: string;
 }
 
 export interface OrderItem {
@@ -184,25 +110,142 @@ export interface OrderItem {
   image?: string;
   customizations?: Record<string, any>;
   artisanId: string;
+  createdAt?: Timestamp | Date;
+  updatedAt?: Timestamp | Date;
 }
 
-export interface Review {
+// Validation schemas
+const addressSchema = z.object({
+  id: z.string(),
+  street: z.string().min(1, 'Street is required'),
+  city: z.string().min(1, 'City is required'),
+  state: z.string().min(1, 'State is required'),
+  zipCode: z.string().min(1, 'Zip code is required'),
+  country: z.string().min(1, 'Country is required'),
+  isDefault: z.boolean(),
+  label: z.string().nullable().optional() // ALLOW NULL FOR OPTIONAL LABEL
+});
+
+const userSchema = z.object({
+  uid: z.string(),
+  displayName: z.string().min(1, 'Display name is required'),
+  email: z.string().email('Invalid email'),
+  photoURL: z.string().optional(),
+  phoneNumber: z.string().optional(),
+  role: z.enum(['customer', 'artisan', 'admin']),
+  createdAt: z.union([z.instanceof(Timestamp), z.instanceof(Date)]), // Allow Date or Timestamp
+  updatedAt: z.union([z.instanceof(Timestamp), z.instanceof(Date)]), // Allow Date or Timestamp
+  addresses: z.array(addressSchema).optional(),
+  bio: z.string().optional(),
+  companyName: z.string().optional(),
+  isVerified: z.boolean().optional(),
+  lastLogin: z.union([z.instanceof(Timestamp), z.instanceof(Date)]).optional(), // Allow Date or Timestamp
+  preferences: z.object({
+    notifications: z.boolean(),
+    emailUpdates: z.boolean(),
+    theme: z.string(),
+  }).optional(),
+});
+
+const productSchema = z.object({
+  id: z.string().optional(), // Make ID optional as it's typically the document ID
+  name: z.string().min(1, 'Product name is required'),
+  description: z.string().min(1, 'Description is required'),
+  price: z.number().positive('Price must be positive'),
+  discountedPrice: z.number().positive('Discounted price must be positive').optional(),
+  currency: z.string(),
+  images: z.array(z.string()).min(1, 'At least one image is required'),
+  category: z.string().min(1, 'Category is required'),
+  subcategory: z.string().optional(),
+  artisanId: z.string(),
+  createdAt: z.union([z.instanceof(Timestamp), z.instanceof(Date)]).optional(),
+  updatedAt: z.union([z.instanceof(Timestamp), z.instanceof(Date)]).optional(),
+  inventory: z.number().int().min(0, 'Inventory cannot be negative'),
+  attributes: z.record(z.any()).optional(),
+  tags: z.array(z.string()).optional(),
+  isCustomizable: z.boolean().optional(),
+  averageRating: z.number().min(0).max(5).optional(),
+  totalReviews: z.number().int().min(0).optional(),
+  occasion: z.string().optional(),
+  materials: z.array(z.string()).optional(),
+  status: z.string().optional(),
+  shippingInfo: z.object({
+    weight: z.number().optional(),
+    dimensions: z.string().optional(),
+    freeShipping: z.boolean().optional(),
+    shippingTime: z.string().optional(),
+  }).optional(),
+  customizationOptions: z.object({
+    text: z.boolean().optional(),
+    color: z.boolean().optional(),
+    size: z.boolean().optional(),
+    material: z.boolean().optional(),
+  }).optional(),
+});
+
+const orderItemSchema = z.object({
+  productId: z.string(),
+  productName: z.string(),
+  quantity: z.number().int().min(1),
+  price: z.number().positive(),
+  totalPrice: z.number().positive(),
+  currency: z.string(),
+  image: z.string().optional(),
+  customizations: z.record(z.any()).optional(),
+  artisanId: z.string(),
+  createdAt: z.union([z.instanceof(Timestamp), z.instanceof(Date)]).optional(),
+  updatedAt: z.union([z.instanceof(Timestamp), z.instanceof(Date)]).optional(),
+});
+
+const orderSchema = z.object({
+  id: z.string().optional(), // Make ID optional as it's typically the document ID
+  userId: z.string(),
+  items: z.array(orderItemSchema).min(1, 'Order must contain at least one item'),
+  total: z.number().positive(),
+  status: z.enum(['pending', 'processing', 'shipped', 'delivered', 'cancelled']),
+  createdAt: z.union([z.instanceof(Timestamp), z.instanceof(Date)]).optional(),
+  updatedAt: z.union([z.instanceof(Timestamp), z.instanceof(Date)]).optional(),
+  shippingAddress: addressSchema,
+  paymentMethod: z.string(),
+  paymentStatus: z.enum(['pending', 'paid', 'failed']),
+  shippingMethod: z.string(),
+  shippingCost: z.number().min(0),
+  discount: z.number().optional(),
+  tax: z.number().optional(),
+  trackingNumber: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+const reviewSchema = z.object({
+  id: z.string().optional(), // Make ID optional as it's typically the document ID
+  productId: z.string(),
+  userId: z.string(),
+  userName: z.string().min(1),
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().min(1),
+  createdAt: z.union([z.instanceof(Timestamp), z.instanceof(Date)]).optional(),
+  updatedAt: z.union([z.instanceof(Timestamp), z.instanceof(Date)]).optional(),
+  images: z.array(z.string().url()).optional(),
+  artisanResponse: z.object({
+    response: z.string(),
+    createdAt: z.instanceof(Timestamp),
+  }).optional(),
+});
+
+export type Address = z.infer<typeof addressSchema>;
+export type User = z.infer<typeof userSchema>;
+export type Product = z.infer<typeof productSchema>;
+export type Order = z.infer<typeof orderSchema>;
+export type Review = z.infer<typeof reviewSchema>;
+
+export interface Wishlist {
   id: string;
-  productId: string;
   userId: string;
-  userName: string;
-  rating: number;
-  comment: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-  images?: string[];
-  artisanResponse?: {
-    response: string;
-    createdAt: Timestamp;
-  };
+  items: string[];
+  createdAt: Timestamp | Date;
+  updatedAt: Timestamp | Date;
 }
 
-// Custom error class
 export class FirestoreError extends Error {
   constructor(
     message: string,
@@ -214,16 +257,21 @@ export class FirestoreError extends Error {
   }
 }
 
-// Helper functions
 const handleError = (error: unknown, context: string): FirestoreError => {
-  console.error(`Error in ${context}:`, error);
-  const errorMessage = (error instanceof Error) ? error.message : String(error);
-  const errorCode = (error && typeof error === 'object' && 'code' in error) ? (error as any).code : 'unknown';
-  return new FirestoreError(
-    errorMessage,
-    errorCode,
-    error
-  );
+  if (error instanceof FirestoreError) {
+    console.error(`Firestore Error (${context}):`, error.message, error.details);
+    return error;
+  } else if (error instanceof z.ZodError) {
+    const errorDetails = error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ');
+    console.error(`Validation Error (${context}):`, errorDetails);
+    return new FirestoreError(`Validation failed: ${errorDetails}`, 'VALIDATION_ERROR', error.issues);
+  } else if (error instanceof Error) {
+    console.error(`Unexpected Error (${context}):`, error.message);
+    return new FirestoreError(error.message, 'UNKNOWN_ERROR', error);
+  } else {
+    console.error(`Unknown Error (${context}):`, error);
+    return new FirestoreError('An unknown error occurred', 'UNKNOWN_ERROR', error);
+  }
 };
 
 const validateData = <T>(schema: z.ZodSchema<T>, data: unknown): T => {
@@ -238,41 +286,25 @@ const validateData = <T>(schema: z.ZodSchema<T>, data: unknown): T => {
 };
 
 export const removeUndefined = (obj: any): any => {
-  if (obj === null || typeof obj !== 'object') {
-    return obj;
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(removeUndefined);
-  }
-
-  const newObj: { [key: string]: any } = {};
-  for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      const value = obj[key];
-      if (value !== undefined) {
-        newObj[key] = removeUndefined(value);
-      }
-    }
-  }
-  return newObj;
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined)
+  );
 };
 
-// Batch operations
-const batchCreateProducts = async (products: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>[]) => {
-  const batch = writeBatch(db);
-  const now = new Date();
-
+export const batchCreateProducts = async (products: Omit<ProductData, 'id' | 'createdAt' | 'updatedAt'>[]) => {
   try {
+    const batch = writeBatch(db);
+    const productsRef = collection(db, 'products');
+    const timestamp = serverTimestamp();
+
     products.forEach(product => {
-      const productRef = doc(collection(db, 'products'));
-      const productData = {
-        ...product,
-        createdAt: now,
-        updatedAt: now
+      const newProductRef = doc(productsRef);
+      const productToSave = {
+        ...removeUndefined(product),
+        createdAt: timestamp,
+        updatedAt: timestamp,
       };
-      validateData(productSchema, { ...productData, id: productRef.id });
-      batch.set(productRef, productData);
+      batch.set(newProductRef, productToSave);
     });
 
     await batch.commit();
@@ -282,14 +314,18 @@ const batchCreateProducts = async (products: Omit<Product, 'id' | 'createdAt' | 
   }
 };
 
-const batchUpdateProducts = async (updates: { id: string; data: Partial<Product> }[]) => {
-  const batch = writeBatch(db);
-  const now = new Date();
-
+export const batchUpdateProducts = async (updates: { id: string; data: Partial<ProductData> }[]) => {
   try {
-    updates.forEach(({ id, data }) => {
-      const productRef = doc(db, 'products', id);
-      batch.update(productRef, { ...data, updatedAt: now });
+    const batch = writeBatch(db);
+    const timestamp = serverTimestamp();
+
+    updates.forEach(update => {
+      const productRef = doc(db, 'products', update.id);
+      const productToUpdate = {
+        ...removeUndefined(update.data),
+        updatedAt: timestamp,
+      };
+      batch.update(productRef, productToUpdate);
     });
 
     await batch.commit();
@@ -299,8 +335,7 @@ const batchUpdateProducts = async (updates: { id: string; data: Partial<Product>
   }
 };
 
-// Pagination helper
-const getPaginatedResults = async <T>(
+export const getPaginatedResults = async <T>(
   q: Query,
   lastDoc: QueryDocumentSnapshot | null,
   pageSize: number
@@ -319,10 +354,17 @@ const getPaginatedResults = async <T>(
       getCountFromServer(q)
     ]);
 
-    const data = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as T[];
+    const data = snapshot.docs.map(doc => {
+      const docData = doc.data() as DocumentData; 
+      const { createdAt, updatedAt, lastLogin, id, ...restData } = docData; // Destructure to safely omit 'id'
+      return {
+        id: doc.id, // Ensure doc.id is always used as the primary ID
+        ...restData,
+        ...(createdAt && { createdAt: createdAt instanceof Timestamp ? createdAt.toDate() : createdAt }),
+        ...(updatedAt && { updatedAt: updatedAt instanceof Timestamp ? updatedAt.toDate() : updatedAt }),
+        ...(lastLogin && { lastLogin: lastLogin instanceof Timestamp ? lastLogin.toDate() : lastLogin }),
+      } as T;
+    });
 
     return {
       data,
@@ -334,38 +376,77 @@ const getPaginatedResults = async <T>(
   }
 };
 
-// Enhanced CRUD operations with validation and error handling
-const createUser = async (uid: string, userData: Partial<User>) => {
+export const createUser = async (uid: string, userData: Partial<UserData>) => {
   try {
     const userRef = doc(db, 'users', uid);
     const timestamp = Timestamp.now();
     
-    const newUser = {
-      ...userData,
-      uid,
+    // Create a new object with explicit properties to avoid redundancy from spread `userData`
+    const newUser: UserData = {
+      uid: uid,
+      displayName: userData.displayName || '', // Ensure displayName is always set
+      email: userData.email || '',
       role: userData.role || 'customer',
+      ...(userData.photoURL && { photoURL: userData.photoURL }),
+      ...(userData.phoneNumber && { phoneNumber: userData.phoneNumber }),
+      ...(userData.addresses && { addresses: userData.addresses }),
+      ...(userData.bio && { bio: userData.bio }),
+      ...(userData.companyName && { companyName: userData.companyName }),
+      ...(userData.isVerified && { isVerified: userData.isVerified }),
+      ...(userData.lastLogin && { lastLogin: userData.lastLogin }),
       createdAt: timestamp,
-      updatedAt: timestamp
+      updatedAt: timestamp,
+      // Ensure preferences are included if provided, otherwise default structure
+      preferences: userData.preferences || {
+        notifications: true,
+        emailUpdates: true,
+        theme: 'light',
+      },
     };
 
     validateData(userSchema, newUser);
     await setDoc(userRef, newUser);
     
-    return { success: true, error: null };
+    // Return the created user data directly
+    const returnedUser: UserData = {
+      ...newUser,
+      // Convert Timestamp to Date if they are Timestamps for consistency in return type
+      createdAt: newUser.createdAt instanceof Timestamp ? newUser.createdAt.toDate() : newUser.createdAt,
+      updatedAt: newUser.updatedAt instanceof Timestamp ? newUser.updatedAt.toDate() : newUser.updatedAt,
+    };
+
+    return { success: true, userData: returnedUser, error: null };
   } catch (error: unknown) {
-    return { success: false, error: handleError(error, 'createUser') };
+    return { success: false, userData: null, error: handleError(error, 'createUser') };
   }
 };
 
-const getUserById = async (uid: string) => {
+export const getUserById = async (uid: string) => {
   try {
     const userRef = doc(db, 'users', uid);
     const userSnap = await getDoc(userRef);
     
     if (userSnap.exists()) {
-      const userData = userSnap.data() as User;
-      validateData(userSchema, userData);
-      return { user: userData, error: null };
+      const data = userSnap.data() as UserData;
+
+      const user: UserData = {
+        uid: userSnap.id,
+        displayName: data.displayName,
+        email: data.email,
+        ...(data.photoURL && { photoURL: data.photoURL }),
+        ...(data.phoneNumber && { phoneNumber: data.phoneNumber }),
+        ...(data.role && { role: data.role }),
+        ...(data.addresses && { addresses: data.addresses }),
+        ...(data.bio && { bio: data.bio }),
+        ...(data.companyName && { companyName: data.companyName }),
+        ...(data.isVerified && { isVerified: data.isVerified }),
+        ...(data.lastLogin && { lastLogin: data.lastLogin instanceof Timestamp ? data.lastLogin.toDate() : data.lastLogin }),
+        ...(data.preferences && { preferences: data.preferences }),
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt,
+      };
+      validateData(userSchema, user);
+      return { user: user, error: null };
     }
     
     return { user: null, error: handleError(new Error('User not found'), 'getUserById') };
@@ -374,8 +455,7 @@ const getUserById = async (uid: string) => {
   }
 };
 
-// Transaction example for updating product inventory
-const updateProductInventory = async (
+export const updateProductInventory = async (
   productId: string,
   quantity: number,
   operation: 'add' | 'subtract'
@@ -410,8 +490,7 @@ const updateProductInventory = async (
   }
 };
 
-// Enhanced product queries with pagination
-const getProducts = async (
+export const getProducts = async (
   constraints: QueryConstraint[] = [],
   pageSize: number = 20,
   lastDoc: QueryDocumentSnapshot | null = null
@@ -425,16 +504,39 @@ const getProducts = async (
     console.log('Created query with constraints:', constraints);
     
     console.log('Fetching paginated results...');
-    const result = await getPaginatedResults<Product>(q, lastDoc, pageSize);
+    const result = await getPaginatedResults<ProductData>(q, lastDoc, pageSize); 
     console.log('Got paginated results:', result.data.length, 'products');
     
-    const products = result.data.map(doc => ({
-      ...doc,
-      createdAt: doc.createdAt instanceof Timestamp ? doc.createdAt.toDate() : doc.createdAt,
-      updatedAt: doc.updatedAt instanceof Timestamp ? doc.updatedAt.toDate() : doc.updatedAt
-    }));
+    const products = result.data.map(docData => {
+      const data = docData as ProductData;
+      return {
+        id: data.id || '',
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        currency: data.currency,
+        images: data.images,
+        category: data.category,
+        artisanId: data.artisanId,
+        inventory: data.inventory,
+        ...(data.discountedPrice && { discountedPrice: data.discountedPrice }),
+        ...(data.subcategory && { subcategory: data.subcategory }),
+        ...(data.createdAt && { createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt }),
+        ...(data.updatedAt && { updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt }),
+        ...(data.attributes && { attributes: data.attributes }),
+        ...(data.tags && { tags: data.tags }),
+        ...(data.isCustomizable && { isCustomizable: data.isCustomizable }),
+        ...(data.averageRating && { averageRating: data.averageRating }),
+        ...(data.totalReviews && { totalReviews: data.totalReviews }),
+        ...(data.occasion && { occasion: data.occasion }),
+        ...(data.materials && { materials: data.materials }),
+        ...(data.status && { status: data.status }),
+        ...(data.shippingInfo && { shippingInfo: data.shippingInfo }),
+        ...(data.customizationOptions && { customizationOptions: data.customizationOptions }),
+      } as ProductData; 
+    });
     
-    return { 
+    return {
       products,
       lastDoc: result.lastDoc,
       total: result.total,
@@ -442,7 +544,7 @@ const getProducts = async (
     };
   } catch (error: unknown) {
     console.error('Error in getProducts:', error);
-    return { 
+    return {
       products: [], 
       lastDoc: null, 
       total: 0, 
@@ -451,10 +553,8 @@ const getProducts = async (
   }
 };
 
-// Order operations
-const createOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>) => {
+export const createOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    // Use a transaction to ensure atomicity for order creation and inventory updates
     const newOrderRef = doc(collection(db, 'orders'));
     await setDoc(newOrderRef, {
       ...orderData,
@@ -467,26 +567,37 @@ const createOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'updatedA
   }
 };
 
-const getOrderById = async (orderId: string) => {
+export const getOrderById = async (orderId: string) => {
   try {
     const orderRef = doc(db, 'orders', orderId);
     const orderSnap = await getDoc(orderRef);
 
     if (orderSnap.exists()) {
-      const orderData = orderSnap.data() as Order;
-      // Convert Timestamps back to Date objects for consistency if needed outside Firestore
-      const cleanedOrderData = {
-        ...orderData,
-        createdAt: orderData.createdAt.toDate(),
-        updatedAt: orderData.updatedAt.toDate(),
-        // Recursively clean timestamps in nested items if they exist
-        items: orderData.items.map(item => ({ 
-          ...item,
-          // Assuming item.createdAt and item.updatedAt might exist and be Timestamps
-          // If not, these lines will be harmless or removed by a smarter solution
-          // createdAt: item.createdAt instanceof Timestamp ? item.createdAt.toDate() : item.createdAt,
-          // updatedAt: item.updatedAt instanceof Timestamp ? item.updatedAt.toDate() : item.updatedAt,
-        }))
+      const data = orderSnap.data() as Order;
+
+      const cleanedOrderData: Order = {
+        id: orderSnap.id,
+        userId: data.userId,
+        items: data.items.map(item => {
+          return {
+            ...item,
+            ...(item.createdAt && { createdAt: item.createdAt instanceof Timestamp ? item.createdAt.toDate() : item.createdAt }),
+            ...(item.updatedAt && { updatedAt: item.updatedAt instanceof Timestamp ? item.updatedAt.toDate() : item.updatedAt }),
+          };
+        }),
+        total: data.total,
+        status: data.status,
+        shippingAddress: data.shippingAddress,
+        paymentMethod: data.paymentMethod,
+        paymentStatus: data.paymentStatus,
+        shippingMethod: data.shippingMethod,
+        shippingCost: data.shippingCost,
+        ...(data.discount && { discount: data.discount }),
+        ...(data.tax && { tax: data.tax }),
+        ...(data.trackingNumber && { trackingNumber: data.trackingNumber }),
+        ...(data.notes && { notes: data.notes }),
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt,
       };
 
       return { order: cleanedOrderData, error: null };
@@ -498,7 +609,7 @@ const getOrderById = async (orderId: string) => {
   }
 };
 
-const updateOrderStatus = async (orderId: string, status: Order['status']) => {
+export const updateOrderStatus = async (orderId: string, status: Order['status']) => {
   try {
     const orderRef = doc(db, 'orders', orderId);
     await updateDoc(orderRef, {
@@ -511,18 +622,33 @@ const updateOrderStatus = async (orderId: string, status: Order['status']) => {
   }
 };
 
-const getUserOrders = async (userId: string) => {
+export const getUserOrders = async (userId: string) => {
   try {
     const ordersRef = collection(db, 'orders');
     const q = query(ordersRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
 
-    const orders: Order[] = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...(doc.data() as Order),
-      createdAt: (doc.data() as Order).createdAt.toDate(), // Convert Timestamp to Date
-      updatedAt: (doc.data() as Order).updatedAt.toDate(), // Convert Timestamp to Date
-    }));
+    const orders: Order[] = querySnapshot.docs.map(doc => {
+      const data = doc.data() as Order;
+      return {
+        id: doc.id,
+        userId: data.userId,
+        items: data.items,
+        total: data.total,
+        status: data.status,
+        shippingAddress: data.shippingAddress,
+        paymentMethod: data.paymentMethod,
+        paymentStatus: data.paymentStatus,
+        shippingMethod: data.shippingMethod,
+        shippingCost: data.shippingCost,
+        ...(data.discount && { discount: data.discount }),
+        ...(data.tax && { tax: data.tax }),
+        ...(data.trackingNumber && { trackingNumber: data.trackingNumber }),
+        ...(data.notes && { notes: data.notes }),
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt,
+      };
+    });
 
     return { orders, error: null };
   } catch (error: unknown) {
@@ -530,31 +656,39 @@ const getUserOrders = async (userId: string) => {
   }
 };
 
-const getArtisanOrders = async (artisanId: string) => {
+export const getArtisanOrders = async (artisanId: string) => {
   try {
     const ordersRef = collection(db, 'orders');
-    // Query for orders where any item in the `items` array has the matching artisanId
-    // This requires a special index in Firestore: create one on `items.artisanId`
     const q = query(
       ordersRef,
-      where('items', 'array-contains', { artisanId }), // This will only work if the entire item object matches
+      where('items', 'array-contains', { artisanId }),
       orderBy('createdAt', 'desc')
     );
     
-    // A more robust way to query if you need to check each item's artisanId without exact object match
-    // would involve filtering on the client-side after fetching, or using a collection group query if `items` were a subcollection.
-    // For simplicity, sticking with `array-contains` assuming exact item object will be matched or adjusted later.
-
     const querySnapshot = await getDocs(q);
 
-    const orders: Order[] = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...(doc.data() as Order),
-      createdAt: (doc.data() as Order).createdAt.toDate(),
-      updatedAt: (doc.data() as Order).updatedAt.toDate(),
-    }));
+    const orders: Order[] = querySnapshot.docs.map(doc => {
+      const data = doc.data() as Order;
+      return {
+        id: doc.id,
+        userId: data.userId,
+        items: data.items,
+        total: data.total,
+        status: data.status,
+        shippingAddress: data.shippingAddress,
+        paymentMethod: data.paymentMethod,
+        paymentStatus: data.paymentStatus,
+        shippingMethod: data.shippingMethod,
+        shippingCost: data.shippingCost,
+        ...(data.discount && { discount: data.discount }),
+        ...(data.tax && { tax: data.tax }),
+        ...(data.trackingNumber && { trackingNumber: data.trackingNumber }),
+        ...(data.notes && { notes: data.notes }),
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt,
+      };
+    });
 
-    // Further filter if array-contains isn't precise enough for specific artisanId within the item object
     const filteredOrders = orders.filter(order => 
       order.items.some(item => item.artisanId === artisanId)
     );
@@ -565,7 +699,7 @@ const getArtisanOrders = async (artisanId: string) => {
   }
 };
 
-const createReview = async (reviewData: Omit<Review, 'id' | 'createdAt' | 'updatedAt'>) => {
+export const createReview = async (reviewData: Omit<Review, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
     const reviewsRef = collection(db, 'reviews');
     const newReviewRef = doc(reviewsRef);
@@ -580,18 +714,27 @@ const createReview = async (reviewData: Omit<Review, 'id' | 'createdAt' | 'updat
   }
 };
 
-const getProductReviews = async (productId: string) => {
+export const getProductReviews = async (productId: string) => {
   try {
     const reviewsRef = collection(db, 'reviews');
     const q = query(reviewsRef, where('productId', '==', productId), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
 
-    const reviews: Review[] = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...(doc.data() as Review),
-      createdAt: (doc.data() as Review).createdAt.toDate(),
-      updatedAt: (doc.data() as Review).updatedAt.toDate(),
-    }));
+    const reviews: Review[] = querySnapshot.docs.map(doc => {
+      const data = doc.data() as Review;
+      return {
+        id: doc.id,
+        productId: data.productId,
+        userId: data.userId,
+        userName: data.userName,
+        rating: data.rating,
+        comment: data.comment,
+        ...(data.createdAt && { createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt }),
+        ...(data.updatedAt && { updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt }),
+        ...(data.images && { images: data.images }),
+        ...(data.artisanResponse && { artisanResponse: data.artisanResponse }),
+      };
+    });
 
     return { reviews, error: null };
   } catch (error: unknown) {
@@ -599,7 +742,7 @@ const getProductReviews = async (productId: string) => {
   }
 };
 
-const addArtisanResponseToReview = async (reviewId: string, response: string) => {
+export const addArtisanResponseToReview = async (reviewId: string, response: string) => {
   try {
     const reviewRef = doc(db, 'reviews', reviewId);
     await updateDoc(reviewRef, {
@@ -615,30 +758,34 @@ const addArtisanResponseToReview = async (reviewId: string, response: string) =>
   }
 };
 
-const updateProductRating = async (productId: string) => {
+export const updateProductRating = async (productId: string) => {
   try {
-    const reviewsRef = collection(db, 'reviews');
-    const q = query(reviewsRef, where('productId', '==', productId));
-    const querySnapshot = await getDocs(q);
+    const { reviews, error: reviewError } = await getProductReviews(productId);
+    if (reviewError) {
+      throw reviewError;
+    }
 
-    let totalRating = 0;
-    querySnapshot.docs.forEach(doc => {
-      totalRating += (doc.data() as Review).rating;
-    });
+    if (reviews.length === 0) {
+      await updateDoc(doc(db, 'products', productId), {
+        averageRating: 0,
+        totalReviews: 0,
+        updatedAt: serverTimestamp(),
+      });
+      return { success: true, error: null };
+    }
 
-    const averageRating = querySnapshot.docs.length > 0 ? totalRating / querySnapshot.docs.length : 0;
-    const totalReviews = querySnapshot.docs.length;
+    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    const averageRating = totalRating / reviews.length;
 
-    const productRef = doc(db, 'products', productId);
-    await updateDoc(productRef, {
-      averageRating,
-      totalReviews,
+    await updateDoc(doc(db, 'products', productId), {
+      averageRating: parseFloat(averageRating.toFixed(1)),
+      totalReviews: reviews.length,
       updatedAt: serverTimestamp(),
     });
 
-    return { success: true, averageRating, totalReviews, error: null };
+    return { success: true, error: null };
   } catch (error: unknown) {
-    return { success: false, averageRating: 0, totalReviews: 0, error: handleError(error, 'updateProductRating') };
+    return { success: false, error: handleError(error, 'updateProductRating') };
   }
 };
 
@@ -646,37 +793,39 @@ export const createProduct = async (productData: ProductData) => {
   try {
     const productsRef = collection(db, 'products');
     const newProductRef = doc(productsRef);
-    await setDoc(newProductRef, {
-      ...productData,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    return { id: newProductRef.id };
+    const timestamp = serverTimestamp();
+    const productToSave = {
+      ...removeUndefined(productData),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    await setDoc(newProductRef, productToSave);
+    return { id: newProductRef.id, error: null };
   } catch (error: unknown) {
-    throw handleError(error, 'createProduct');
+    return { id: null, error: handleError(error, 'createProduct') };
   }
 };
 
 export const updateProduct = async (productId: string, productData: Partial<ProductData>) => {
   try {
     const productRef = doc(db, 'products', productId);
-    await updateDoc(productRef, {
-      ...productData,
+    const productToUpdate = {
+      ...removeUndefined(productData),
       updatedAt: serverTimestamp(),
-    });
-    return { success: true };
+    };
+    await updateDoc(productRef, productToUpdate);
+    return { success: true, error: null };
   } catch (error: unknown) {
-    throw handleError(error, 'updateProduct');
+    return { success: false, error: handleError(error, 'updateProduct') };
   }
 };
 
 export const deleteProduct = async (productId: string) => {
   try {
-    const productRef = doc(db, 'products', productId);
-    await deleteDoc(productRef);
-    return { success: true };
+    await deleteDoc(doc(db, 'products', productId));
+    return { success: true, error: null };
   } catch (error: unknown) {
-    throw handleError(error, 'deleteProduct');
+    return { success: false, error: handleError(error, 'deleteProduct') };
   }
 };
 
@@ -686,14 +835,33 @@ export const getProductById = async (productId: string) => {
     const productSnap = await getDoc(productRef);
 
     if (productSnap.exists()) {
-      const productData = productSnap.data() as Product;
-      // Convert Timestamps back to Date objects if needed outside Firestore
-      const cleanedProductData = {
-        ...productData,
-        createdAt: productData.createdAt instanceof Timestamp ? productData.createdAt.toDate() : productData.createdAt,
-        updatedAt: productData.updatedAt instanceof Timestamp ? productData.updatedAt.toDate() : productData.updatedAt,
+      const data = productSnap.data() as ProductData;
+      const product: ProductData = {
+        id: productSnap.id,
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        currency: data.currency,
+        images: data.images,
+        category: data.category,
+        artisanId: data.artisanId,
+        inventory: data.inventory,
+        ...(data.discountedPrice && { discountedPrice: data.discountedPrice }),
+        ...(data.subcategory && { subcategory: data.subcategory }),
+        ...(data.createdAt && { createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt }),
+        ...(data.updatedAt && { updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt }),
+        ...(data.attributes && { attributes: data.attributes }),
+        ...(data.tags && { tags: data.tags }),
+        ...(data.isCustomizable && { isCustomizable: data.isCustomizable }),
+        ...(data.averageRating && { averageRating: data.averageRating }),
+        ...(data.totalReviews && { totalReviews: data.totalReviews }),
+        ...(data.occasion && { occasion: data.occasion }),
+        ...(data.materials && { materials: data.materials }),
+        ...(data.status && { status: data.status }),
+        ...(data.shippingInfo && { shippingInfo: data.shippingInfo }),
+        ...(data.customizationOptions && { customizationOptions: data.customizationOptions }),
       };
-      return { product: cleanedProductData, error: null };
+      return { product: product, error: null };
     }
     return { product: null, error: handleError(new Error('Product not found'), 'getProductById') };
   } catch (error: unknown) {
@@ -707,12 +875,34 @@ export const getProductsByArtisan = async (artisanId: string) => {
     const q = query(productsRef, where('artisanId', '==', artisanId), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
 
-    const products: Product[] = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...(doc.data() as Product),
-      createdAt: (doc.data() as Product).createdAt.toDate(), // Convert Timestamp to Date
-      updatedAt: (doc.data() as Product).updatedAt.toDate(), // Convert Timestamp to Date
-    }));
+    const products: ProductData[] = querySnapshot.docs.map(doc => {
+      const data = doc.data() as ProductData;
+      return {
+        id: doc.id,
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        currency: data.currency,
+        images: data.images,
+        category: data.category,
+        artisanId: data.artisanId,
+        inventory: data.inventory,
+        ...(data.discountedPrice && { discountedPrice: data.discountedPrice }),
+        ...(data.subcategory && { subcategory: data.subcategory }),
+        ...(data.createdAt && { createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt }),
+        ...(data.updatedAt && { updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt }),
+        ...(data.attributes && { attributes: data.attributes }),
+        ...(data.tags && { tags: data.tags }),
+        ...(data.isCustomizable && { isCustomizable: data.isCustomizable }),
+        ...(data.averageRating && { averageRating: data.averageRating }),
+        ...(data.totalReviews && { totalReviews: data.totalReviews }),
+        ...(data.occasion && { occasion: data.occasion }),
+        ...(data.materials && { materials: data.materials }),
+        ...(data.status && { status: data.status }),
+        ...(data.shippingInfo && { shippingInfo: data.shippingInfo }),
+        ...(data.customizationOptions && { customizationOptions: data.customizationOptions }),
+      };
+    });
 
     return { products, error: null };
   } catch (error: unknown) {
@@ -725,35 +915,40 @@ export const getUserData = async (userId: string) => {
     const userRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userRef);
     if (userSnap.exists()) {
-      const userData = userSnap.data() as UserData;
-      // Convert Timestamps back to Date objects for addresses if necessary
-      const cleanedUserData = {
-        ...userData,
-        createdAt: userData.createdAt instanceof Timestamp ? userData.createdAt.toDate() : userData.createdAt,
-        updatedAt: userData.updatedAt instanceof Timestamp ? userData.updatedAt.toDate() : userData.updatedAt,
-        lastLogin: userData.lastLogin instanceof Timestamp ? userData.lastLogin.toDate() : userData.lastLogin,
-        addresses: userData.addresses?.map(addr => ({ // Ensure nested objects are also cleaned
-          ...addr,
-          createdAt: (addr as any).createdAt instanceof Timestamp ? (addr as any).createdAt.toDate() : (addr as any).createdAt, // Assuming addresses might have timestamps
-          updatedAt: (addr as any).updatedAt instanceof Timestamp ? (addr as any).updatedAt.toDate() : (addr as any).updatedAt,
-        })),
+      const data = userSnap.data() as UserData;
+      const user: UserData = {
+        uid: userSnap.id,
+        displayName: data.displayName,
+        email: data.email,
+        ...(data.photoURL && { photoURL: data.photoURL }),
+        ...(data.phoneNumber && { phoneNumber: data.phoneNumber }),
+        ...(data.role && { role: data.role }),
+        ...(data.addresses && { addresses: data.addresses }),
+        ...(data.bio && { bio: data.bio }),
+        ...(data.companyName && { companyName: data.companyName }),
+        ...(data.isVerified && { isVerified: data.isVerified }),
+        ...(data.lastLogin && { lastLogin: data.lastLogin instanceof Timestamp ? data.lastLogin.toDate() : data.lastLogin }),
+        ...(data.preferences && { preferences: data.preferences }),
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt,
       };
-
-      return cleanedUserData;
+      return { userData: user, error: null };
+    } else {
+      return { userData: null, error: handleError(new Error('User not found'), 'getUserData') };
     }
-    return null; // User not found
   } catch (error: unknown) {
-    throw handleError(error, 'getUserData');
+    return { userData: null, error: handleError(error, 'getUserData') };
   }
 };
 
 export const updateUserProfile = async (userId: string, userData: Partial<UserData>) => {
   try {
     const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      ...userData,
+    const userToUpdate = {
+      ...removeUndefined(userData),
       updatedAt: serverTimestamp(),
-    });
+    };
+    await updateDoc(userRef, userToUpdate);
     return { success: true, error: null };
   } catch (error: unknown) {
     return { success: false, error: handleError(error, 'updateUserProfile') };
@@ -762,82 +957,73 @@ export const updateUserProfile = async (userId: string, userData: Partial<UserDa
 
 export const placeOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'updatedAt'>) => {
   try {
-    return await runTransaction(db, async (transaction) => {
-      // 1. First, perform all reads (get product data)
-      const productRefs = orderData.items.map(item => doc(db, 'products', item.productId));
-      const productDocs = await Promise.all(productRefs.map(ref => transaction.get(ref)));
-
-      const productInventoryMap: { [productId: string]: number } = {};
-      const productNamesMap: { [productId: string]: string } = {};
-
-      for (const productDoc of productDocs) {
-        if (!productDoc.exists()) {
-          throw handleError(new Error(`Product with ID ${productDoc.id} not found.`), 'placeOrder - product-not-found');
-        }
-        const currentInventory = productDoc.data()?.inventory || 0;
-        productInventoryMap[productDoc.id] = currentInventory;
-        productNamesMap[productDoc.id] = productDoc.data()?.name || 'Unknown Product';
-      }
-
-      // 2. Then, perform all writes
-      const newOrderRef = doc(collection(db, 'orders'));
-      
-      console.log("Order data before transaction.set:", orderData); // Keep this log for debugging
-      
-      transaction.set(newOrderRef, {
-        ...orderData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
-      // Update product inventories based on the data read above
-      for (const item of orderData.items) {
-        const currentInventory = productInventoryMap[item.productId];
-        const productName = productNamesMap[item.productId];
-        const newInventory = currentInventory - item.quantity;
-
-        if (newInventory < 0) {
-          throw handleError(new Error(`Not enough stock for product ${productName}. Only ${currentInventory} available.`), 'placeOrder - insufficient-stock');
-        }
-
-        const productRef = doc(db, 'products', item.productId); // Get reference again for update
-        transaction.update(productRef, { inventory: newInventory });
-      }
-
-      // 3. Trigger backend processes for email and invoice (conceptual)
-      // In a real-world application, this would typically involve calling a Firebase Cloud Function
-      // or a dedicated backend service to handle sensitive operations like sending emails and generating PDFs.
-      // This keeps API keys secure and allows for more complex, long-running processes.
-      console.log(`Order ${newOrderRef.id} placed successfully.`);
-      console.log(`Simulating email to artisan for order ${newOrderRef.id}...`);
-      // Artisan email: The artisan's email would be fetched using item.artisanId from the database.
-      // For example, fetch the artisan's user data and get their email.
-      console.log(`Simulating invoice generation and email to customer for order ${newOrderRef.id}...`);
-      // Customer invoice email: Customer's email is available from orderData.userId by fetching user data.
-
-      return { success: true, orderId: newOrderRef.id };
+    const newOrderRef = doc(collection(db, 'orders'));
+    await setDoc(newOrderRef, {
+      ...orderData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
+    return { id: newOrderRef.id };
   } catch (error: unknown) {
     throw handleError(error, 'placeOrder');
   }
 };
 
-// Export all functions at the end of the file
-export {
-  batchCreateProducts,
-  batchUpdateProducts,
-  getPaginatedResults,
-  updateProductInventory,
-  createUser,
-  getUserById,
-  getProducts,
-  createOrder,
-  getOrderById,
-  updateOrderStatus,
-  getUserOrders,
-  getArtisanOrders,
-  createReview,
-  getProductReviews,
-  addArtisanResponseToReview,
-  updateProductRating
-}; 
+export const getWishlist = async (userId: string) => {
+  try {
+    const wishlistRef = collection(db, 'wishlists');
+    const q = query(wishlistRef, where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const wishlistDoc = querySnapshot.docs[0];
+      const wishlist = {
+        id: wishlistDoc.id,
+        ...wishlistDoc.data(),
+      } as Wishlist;
+      return { wishlist, error: null };
+    } else {
+      return { wishlist: null, error: null };
+    }
+  } catch (error: unknown) {
+    return { wishlist: null, error: handleError(error, 'getWishlist') };
+  }
+};
+
+export const addOrUpdateWishlist = async (userId: string, productId: string, action: 'add' | 'remove') => {
+  try {
+    const wishlistRef = collection(db, 'wishlists');
+    const q = query(wishlistRef, where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
+
+    let wishlistDocRef;
+    let currentItems: string[] = [];
+
+    if (!querySnapshot.empty) {
+      wishlistDocRef = doc(db, 'wishlists', querySnapshot.docs[0].id);
+      currentItems = querySnapshot.docs[0].data().items || [];
+    } else {
+      wishlistDocRef = doc(wishlistRef);
+    }
+
+    let updatedItems: string[];
+    if (action === 'add') {
+      const tempSet = new Set(currentItems);
+      tempSet.add(productId);
+      updatedItems = Array.from(tempSet);
+    } else {
+      updatedItems = currentItems.filter(id => id !== productId);
+    }
+
+    await setDoc(wishlistDocRef, {
+      userId,
+      items: updatedItems,
+      updatedAt: serverTimestamp(),
+      createdAt: querySnapshot.empty ? serverTimestamp() : wishlistDocRef.id,
+    }, { merge: true });
+
+    return { success: true, error: null };
+  } catch (error: unknown) {
+    return { success: false, error: handleError(error, 'addOrUpdateWishlist') };
+  }
+};

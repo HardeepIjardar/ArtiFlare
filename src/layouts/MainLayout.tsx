@@ -4,12 +4,11 @@ import { FaUserCircle, FaShoppingCart } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import Logo from '../components/Logo';
-import { getUserData } from '../services/firestore';
 
 export const SearchContext = createContext<any>(null);
 
 const MainLayout: React.FC = () => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, firestoreUser, logout } = useAuth();
   const { cartCount } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
@@ -20,34 +19,18 @@ const MainLayout: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [userRole, setUserRole] = useState<'customer' | 'artisan' | 'admin' | null>(null);
   const isHomePage = location.pathname === '/';
-  const [firestoreUser, setFirestoreUser] = useState<any>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
   
   // Reference to the hero section search bar (for intersection observer)
   const heroSearchRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const fetchUserRole = async () => {
-      if (currentUser) {
-        const userData = await getUserData(currentUser.uid);
-        if (userData && !userData.error) {
-          setUserRole(userData.role);
-        }
-      } else {
-        setUserRole(null);
-      }
-    };
-
-    fetchUserRole();
-  }, [currentUser]);
-
-  useEffect(() => {
-    if (currentUser) {
-      getUserData(currentUser.uid).then(data => setFirestoreUser(data));
+    if (firestoreUser) {
+      setUserRole(firestoreUser.role);
     } else {
-      setFirestoreUser(null);
+      setUserRole(null);
     }
-  }, [currentUser]);
+  }, [firestoreUser]);
 
   useEffect(() => {
     // Close the profile menu when clicking outside

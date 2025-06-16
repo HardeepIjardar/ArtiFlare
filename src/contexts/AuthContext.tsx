@@ -24,10 +24,12 @@ import {
   updateUserPassword
 } from '../services/firebase';
 import { auth } from '../services/firebase';
+import { getUserData, UserData } from '../services/firestore';
 
 // Define the shape of our context
 interface AuthContextType {
   currentUser: User | null;
+  firestoreUser: UserData | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ user: User | null; error: string | null }>;
   register: (email: string, password: string, displayName?: string) => Promise<{ user: User | null; error: string | null }>;
@@ -71,12 +73,24 @@ interface VerifyPhoneResult {
 // Provider component
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [firestoreUser, setFirestoreUser] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Subscribe to auth state changes
-    const unsubscribe = subscribeToAuthChanges((user) => {
+    const unsubscribe = subscribeToAuthChanges(async (user) => {
       setCurrentUser(user);
+      if (user) {
+        // Fetch Firestore user data when auth state changes
+        const result = await getUserData(user.uid);
+        if (result.userData) {
+          setFirestoreUser(result.userData);
+        } else if (result.error) {
+          console.error("Error fetching user data:", result.error);
+        }
+      } else {
+        setFirestoreUser(null);
+      }
       setIsLoading(false);
     });
 
@@ -137,6 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = {
     currentUser,
+    firestoreUser,
     isLoading,
     login,
     register,

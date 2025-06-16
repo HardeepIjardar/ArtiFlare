@@ -22,10 +22,15 @@ const ProfilePage: React.FC = () => {
       }
 
       try {
-        const data = await getUserData(currentUser.uid);
-        setUserData(data);
-      } catch (err) {
+        const result = await getUserData(currentUser.uid);
+        if (result.userData) {
+          setUserData(result.userData);
+        } else if (result.error) {
+          setError(result.error.message);
+        }
+      } catch (err: any) {
         console.error('Failed to fetch user data:', err);
+        setError(err.message || 'Failed to fetch user data');
       } finally {
         setIsLoading(false);
       }
