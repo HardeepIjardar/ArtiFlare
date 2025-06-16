@@ -1,7 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const ArtisanOrders: React.FC = () => {
+  const { convertPrice, formatPrice } = useCurrency();
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-6">
@@ -19,127 +22,117 @@ const ArtisanOrders: React.FC = () => {
       </div>
       
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-dark-500 uppercase tracking-wider">
-                Order
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-dark-500 uppercase tracking-wider">
-                Customer
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-dark-500 uppercase tracking-wider">
-                Date
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-dark-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-dark-500 uppercase tracking-wider">
-                Total
-              </th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-dark-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            <tr>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-dark">#12345</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-dark">John Doe</div>
-                <div className="text-sm text-dark-500">john.doe@example.com</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-dark">May 12, 2023</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                  Processing
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
-                {34.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <a href="#" className="text-primary hover:text-primary-700">View</a>
-              </td>
-            </tr>
-            
-            <tr>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-dark">#12344</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-dark">Jane Smith</div>
-                <div className="text-sm text-dark-500">jane.smith@example.com</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-dark">May 10, 2023</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                  Shipped
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
-                {29.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <a href="#" className="text-primary hover:text-primary-700">View</a>
-              </td>
-            </tr>
-            
-            <tr>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-dark">#12343</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-dark">Robert Johnson</div>
-                <div className="text-sm text-dark-500">robert.johnson@example.com</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-dark">May 5, 2023</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                  Delivered
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
-                {74.97.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <a href="#" className="text-primary hover:text-primary-700">View</a>
-              </td>
-            </tr>
-            
-            <tr>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-dark">#12342</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-dark">Lisa Brown</div>
-                <div className="text-sm text-dark-500">lisa.brown@example.com</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-dark">May 1, 2023</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                  Canceled
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
-                {24.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <a href="#" className="text-primary hover:text-primary-700">View</a>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-dark-500 uppercase tracking-wider">Order ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-dark-500 uppercase tracking-wider">Customer</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-dark-500 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-dark-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-dark-500 uppercase tracking-wider">Total</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-dark-500 uppercase tracking-wider">Action</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              <tr>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-dark">#12345</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-dark">John Doe</div>
+                  <div className="text-sm text-dark-500">john.doe@example.com</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-dark">May 12, 2023</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                    Processing
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
+                  {formatPrice(convertPrice(34.99, 'INR'))}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <a href="#" className="text-primary hover:text-primary-700">View</a>
+                </td>
+              </tr>
+              
+              <tr>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-dark">#12344</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-dark">Jane Smith</div>
+                  <div className="text-sm text-dark-500">jane.smith@example.com</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-dark">May 10, 2023</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                    Shipped
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
+                  {formatPrice(convertPrice(29.99, 'INR'))}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <a href="#" className="text-primary hover:text-primary-700">View</a>
+                </td>
+              </tr>
+              
+              <tr>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-dark">#12343</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-dark">Robert Johnson</div>
+                  <div className="text-sm text-dark-500">robert.johnson@example.com</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-dark">May 5, 2023</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                    Delivered
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
+                  {formatPrice(convertPrice(74.97, 'INR'))}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <a href="#" className="text-primary hover:text-primary-700">View</a>
+                </td>
+              </tr>
+              
+              <tr>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-dark">#12342</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-dark">Lisa Brown</div>
+                  <div className="text-sm text-dark-500">lisa.brown@example.com</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-dark">May 1, 2023</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                    Canceled
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-dark">
+                  {formatPrice(convertPrice(24.99, 'INR'))}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <a href="#" className="text-primary hover:text-primary-700">View</a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         
         <div className="px-6 py-4 border-t border-gray-200">
           <div className="flex items-center justify-between">

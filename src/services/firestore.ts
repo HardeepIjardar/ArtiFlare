@@ -34,6 +34,7 @@ export interface ProductData {
   description: string;
   price: number;
   discountedPrice?: number;
+  currency: string;
   images: string[];
   category: string;
   subcategory?: string;
@@ -131,6 +132,7 @@ const productSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   price: z.number().positive('Price must be positive'),
   discountedPrice: z.number().positive('Discounted price must be positive').optional(),
+  currency: z.string(),
   images: z.array(z.string()).min(1, 'At least one image is required'),
   category: z.string().min(1, 'Category is required'),
   subcategory: z.string().optional(),
@@ -178,8 +180,8 @@ export interface OrderItem {
   quantity: number;
   price: number;
   totalPrice: number;
-  artisanId: string;
-  image: string;
+  currency: string;
+  image?: string;
   customizations?: Record<string, any>;
 }
 

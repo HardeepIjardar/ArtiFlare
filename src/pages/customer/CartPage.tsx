@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUserData } from '../../services/firestore';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const CartPage: React.FC = () => {
   const { cartItems, removeFromCart, updateQuantity, cartTotal } = useCart();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [artisanNames, setArtisanNames] = useState<{ [key: string]: string }>({});
+  const { convertPrice, formatPrice } = useCurrency();
 
   useEffect(() => {
     const fetchArtisanNames = async () => {
@@ -73,7 +75,7 @@ const CartPage: React.FC = () => {
           <div className="md:w-2/3 p-6">
             <div className="divide-y divide-gray-200">
               {cartItems.map((item) => (
-                <div key={item.id} className="py-4 flex">
+                <div key={item.id} className="flex items-center py-4 border-b border-gray-200">
                   <div className="h-24 w-24 bg-sage-100 rounded-md flex-shrink-0">
                     {item.image && <img src={item.image} alt={item.name} className="h-full w-full object-cover rounded-md" />}
                   </div>
@@ -109,7 +111,9 @@ const CartPage: React.FC = () => {
                           <span>+</span>
                         </button>
                       </div>
-                      <p className="text-primary font-bold">{(item.price * item.quantity).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
+                      <p className="text-primary font-bold">
+                        {formatPrice(convertPrice(item.price * item.quantity, item.currency || 'INR'))}
+                      </p>
                     </div>
                   </div>
                   <button 

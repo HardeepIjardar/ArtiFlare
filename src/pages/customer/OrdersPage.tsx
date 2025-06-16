@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUserOrders } from '../../services/firestore';
 import type { Order } from '../../services/firestore';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const OrdersPage: React.FC = () => {
   const { currentUser, isLoading: authLoading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { convertPrice, formatPrice } = useCurrency();
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -114,7 +116,9 @@ const OrdersPage: React.FC = () => {
                     )}
                   </div>
                   <div className="md:w-1/4 text-right">
-                    <p className="text-primary font-bold">{item.totalPrice.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
+                    <p className="text-primary font-bold">
+                      {formatPrice(convertPrice(item.totalPrice, item.currency || 'INR'))}
+                    </p>
                     <p className="text-dark-500 text-sm">Qty: {item.quantity}</p>
                   </div>
                 </div>

@@ -5,6 +5,7 @@ import { getUserData, updateUserProfile } from '../../services/firestore';
 import { useCart } from '../../contexts/CartContext';
 import type { UserData } from '../../services/firestore';
 import { v4 as uuidv4 } from 'uuid';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const CheckoutPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -31,6 +32,7 @@ const CheckoutPage: React.FC = () => {
     country: '',
     label: ''
   });
+  const { convertPrice, formatPrice } = useCurrency();
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -521,19 +523,27 @@ const CheckoutPage: React.FC = () => {
             <div className="divide-y divide-gray-200">
               <div className="py-2 flex justify-between">
                 <span className="text-dark-500">Products ({cartItems.length})</span>
-                <span className="text-dark font-medium">₹{cartTotal.toFixed(2)}</span>
+                <span className="text-dark font-medium">
+                  {formatPrice(convertPrice(cartTotal, 'INR'))}
+                </span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-dark-600">Shipping</span>
-                <span className="ml-auto text-dark">{shippingCost.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
+                <span className="ml-auto text-dark">
+                  {formatPrice(convertPrice(shippingCost, 'INR'))}
+                </span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-dark-600">Tax (8%)</span>
-                <span className="ml-auto text-dark">{tax.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
+                <span className="ml-auto text-dark">
+                  {formatPrice(convertPrice(tax, 'INR'))}
+                </span>
               </div>
               <div className="flex justify-between pt-4 mt-4 border-t border-gray-200">
                 <span className="text-lg font-bold text-dark">Order Total</span>
-                <span className="ml-auto text-primary font-bold">{orderTotal.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
+                <span className="ml-auto text-primary font-bold">
+                  {formatPrice(convertPrice(orderTotal, 'INR'))}
+                </span>
               </div>
             </div>
             <button className="w-full bg-primary hover:bg-primary-700 text-white font-bold py-2 px-4 rounded mt-6">

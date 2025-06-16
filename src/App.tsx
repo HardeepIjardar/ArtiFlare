@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider, useCart } from './contexts/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './ScrollToTop';
+import { CurrencyProvider } from './contexts/CurrencyContext';
 
 // Layout components
 import MainLayout from './layouts/MainLayout';
@@ -169,10 +170,12 @@ function RoutesWithAuth() {
 function App() {
   return (
     <Router>
-      <ScrollToTop />
       <AuthProvider>
         <CartProvider>
-          <RoutesWithAuth />
+          <CurrencyProvider>
+            <ScrollToTop />
+            <RoutesWithAuth />
+          </CurrencyProvider>
         </CartProvider>
       </AuthProvider>
     </Router>

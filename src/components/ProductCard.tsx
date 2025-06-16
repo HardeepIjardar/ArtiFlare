@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Product } from '../services/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { db } from '../services/firebase';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { FaHeart, FaRegHeart } from 'react-icons/fa';
@@ -29,6 +30,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { convertPrice, formatPrice } = useCurrency();
   const [wishlisted, setWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
@@ -111,7 +113,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <h3 className="font-semibold text-dark text-base leading-tight truncate mb-1" title={product.name}>{product.name}</h3>
         <p className="text-dark-400 text-xs mb-2 truncate">by {artisanName}</p>
         <div className="flex items-center justify-between mb-3">
-          <span className="text-primary font-bold text-lg">{product.price.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
+          <span className="text-primary font-bold text-lg">
+            {formatPrice(convertPrice(product.price, product.currency || 'INR'))}
+          </span>
           {showQuantitySelector ? (
             <div className="flex items-center space-x-1 bg-gray-100 rounded px-2 py-1">
               <button

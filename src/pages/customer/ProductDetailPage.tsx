@@ -4,6 +4,7 @@ import { useCart } from '../../contexts/CartContext';
 import { getProductById, getUserData, Product, getProductReviews, createReview, getProducts, Review } from '../../services/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import ProductCard from '../../components/ProductCard';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +26,7 @@ const ProductDetailPage: React.FC = () => {
   const [submittingReview, setSubmittingReview] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const navigate = useNavigate();
+  const { convertPrice, formatPrice } = useCurrency();
   
   useEffect(() => {
     const fetchProduct = async () => {
@@ -239,11 +241,17 @@ const ProductDetailPage: React.FC = () => {
             <div className="mb-6 flex items-center space-x-4">
               {product.discountedPrice ? (
                 <>
-                  <span className="text-primary text-2xl font-bold">{product.discountedPrice.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
-                  <span className="text-dark-500 line-through text-lg">{product.price.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
+                  <span className="text-primary text-2xl font-bold">
+                    {formatPrice(convertPrice(product.discountedPrice, product.currency || 'INR'))}
+                  </span>
+                  <span className="text-dark-500 line-through text-lg">
+                    {formatPrice(convertPrice(product.price, product.currency || 'INR'))}
+                  </span>
                 </>
               ) : (
-                <span className="text-primary text-2xl font-bold">{product.price.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
+                <span className="text-primary text-2xl font-bold">
+                  {formatPrice(convertPrice(product.price, product.currency || 'INR'))}
+                </span>
               )}
               <span className="ml-4 text-sm text-dark-500">In stock: {product.inventory}</span>
             </div>
