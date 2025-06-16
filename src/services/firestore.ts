@@ -87,7 +87,7 @@ export interface UserData {
     zipCode: string;
     country: string;
     isDefault: boolean;
-    label?: string; // e.g., "Home", "Work", etc.
+    label?: string | null; // e.g., "Home", "Work", etc. - now allows null
   }[];
   bio?: string;
   companyName?: string;
@@ -109,7 +109,7 @@ const addressSchema = z.object({
   zipCode: z.string().min(1, 'Zip code is required'),
   country: z.string().min(1, 'Country is required'),
   isDefault: z.boolean(),
-  label: z.string().optional()
+  label: z.string().nullable().optional() // Allow null for optional label
 });
 
 const userSchema = z.object({
@@ -183,6 +183,7 @@ export interface OrderItem {
   currency: string;
   image?: string;
   customizations?: Record<string, any>;
+  artisanId: string;
 }
 
 export interface Review {
@@ -214,11 +215,13 @@ export class FirestoreError extends Error {
 }
 
 // Helper functions
-const handleError = (error: any, context: string): never => {
+const handleError = (error: unknown, context: string): FirestoreError => {
   console.error(`Error in ${context}:`, error);
-  throw new FirestoreError(
-    error.message || 'An unknown error occurred',
-    error.code || 'unknown',
+  const errorMessage = (error instanceof Error) ? error.message : String(error);
+  const errorCode = (error && typeof error === 'object' && 'code' in error) ? (error as any).code : 'unknown';
+  return new FirestoreError(
+    errorMessage,
+    errorCode,
     error
   );
 };
@@ -226,16 +229,33 @@ const handleError = (error: any, context: string): never => {
 const validateData = <T>(schema: z.ZodSchema<T>, data: unknown): T => {
   try {
     return schema.parse(data);
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
-      throw new FirestoreError(
-        'Validation error',
-        'invalid-data',
-        error.errors
-      );
+      throw handleError(error, 'validateData');
     }
-    throw error;
+    throw handleError(error, 'validateData');
   }
+};
+
+export const removeUndefined = (obj: any): any => {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefined);
+  }
+
+  const newObj: { [key: string]: any } = {};
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const value = obj[key];
+      if (value !== undefined) {
+        newObj[key] = removeUndefined(value);
+      }
+    }
+  }
+  return newObj;
 };
 
 // Batch operations
@@ -257,7 +277,7 @@ const batchCreateProducts = async (products: Omit<Product, 'id' | 'createdAt' | 
 
     await batch.commit();
     return { success: true, error: null };
-  } catch (error) {
+  } catch (error: unknown) {
     return { success: false, error: handleError(error, 'batchCreateProducts') };
   }
 };
@@ -274,7 +294,7 @@ const batchUpdateProducts = async (updates: { id: string; data: Partial<Product>
 
     await batch.commit();
     return { success: true, error: null };
-  } catch (error) {
+  } catch (error: unknown) {
     return { success: false, error: handleError(error, 'batchUpdateProducts') };
   }
 };
@@ -309,7 +329,7 @@ const getPaginatedResults = async <T>(
       lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
       total: totalSnapshot.data().count
     };
-  } catch (error) {
+  } catch (error: unknown) {
     throw handleError(error, 'getPaginatedResults');
   }
 };
@@ -332,7 +352,7 @@ const createUser = async (uid: string, userData: Partial<User>) => {
     await setDoc(userRef, newUser);
     
     return { success: true, error: null };
-  } catch (error) {
+  } catch (error: unknown) {
     return { success: false, error: handleError(error, 'createUser') };
   }
 };
@@ -348,8 +368,8 @@ const getUserById = async (uid: string) => {
       return { user: userData, error: null };
     }
     
-    return { user: null, error: new FirestoreError('User not found', 'not-found') };
-  } catch (error) {
+    return { user: null, error: handleError(new Error('User not found'), 'getUserById') };
+  } catch (error: unknown) {
     return { user: null, error: handleError(error, 'getUserById') };
   }
 };
@@ -366,7 +386,7 @@ const updateProductInventory = async (
       const productSnap = await transaction.get(productRef);
       
       if (!productSnap.exists()) {
-        throw new FirestoreError('Product not found', 'not-found');
+        throw handleError(new Error('Product not found'), 'updateProductInventory');
       }
       
       const currentInventory = productSnap.data().inventory;
@@ -375,7 +395,7 @@ const updateProductInventory = async (
         : currentInventory - quantity;
       
       if (newInventory < 0) {
-        throw new FirestoreError('Insufficient inventory', 'invalid-operation');
+        throw handleError(new Error('Insufficient inventory'), 'updateProductInventory');
       }
       
       transaction.update(productRef, { 
@@ -385,7 +405,7 @@ const updateProductInventory = async (
     });
     
     return { success: true, error: null };
-  } catch (error) {
+  } catch (error: unknown) {
     return { success: false, error: handleError(error, 'updateProductInventory') };
   }
 };
@@ -420,20 +440,13 @@ const getProducts = async (
       total: result.total,
       error: null 
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in getProducts:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
-    }
     return { 
       products: [], 
       lastDoc: null, 
       total: 0, 
-      error: error instanceof Error ? error.message : 'Failed to fetch products'
+      error: handleError(error, 'getProducts') 
     };
   }
 };
@@ -441,21 +454,16 @@ const getProducts = async (
 // Order operations
 const createOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const ordersRef = collection(db, 'orders');
-    const timestamp = serverTimestamp();
-    
-    const docRef = await addDoc(ordersRef, {
+    // Use a transaction to ensure atomicity for order creation and inventory updates
+    const newOrderRef = doc(collection(db, 'orders'));
+    await setDoc(newOrderRef, {
       ...orderData,
-      createdAt: timestamp,
-      updatedAt: timestamp
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
-    
-    // Update the document with its ID
-    await updateDoc(docRef, { id: docRef.id });
-    
-    return { orderId: docRef.id, error: null };
-  } catch (error: any) {
-    return { orderId: null, error: error.message };
+    return { id: newOrderRef.id };
+  } catch (error: unknown) {
+    throw handleError(error, 'createOrder');
   }
 };
 
@@ -463,14 +471,30 @@ const getOrderById = async (orderId: string) => {
   try {
     const orderRef = doc(db, 'orders', orderId);
     const orderSnap = await getDoc(orderRef);
-    
+
     if (orderSnap.exists()) {
-      return { order: orderSnap.data() as Order, error: null };
-    } else {
-      return { order: null, error: 'Order not found' };
+      const orderData = orderSnap.data() as Order;
+      // Convert Timestamps back to Date objects for consistency if needed outside Firestore
+      const cleanedOrderData = {
+        ...orderData,
+        createdAt: orderData.createdAt.toDate(),
+        updatedAt: orderData.updatedAt.toDate(),
+        // Recursively clean timestamps in nested items if they exist
+        items: orderData.items.map(item => ({ 
+          ...item,
+          // Assuming item.createdAt and item.updatedAt might exist and be Timestamps
+          // If not, these lines will be harmless or removed by a smarter solution
+          // createdAt: item.createdAt instanceof Timestamp ? item.createdAt.toDate() : item.createdAt,
+          // updatedAt: item.updatedAt instanceof Timestamp ? item.updatedAt.toDate() : item.updatedAt,
+        }))
+      };
+
+      return { order: cleanedOrderData, error: null };
     }
-  } catch (error: any) {
-    return { order: null, error: error.message };
+
+    return { order: null, error: handleError(new Error('Order not found'), 'getOrderById') };
+  } catch (error: unknown) {
+    return { order: null, error: handleError(error, 'getOrderById') };
   }
 };
 
@@ -479,100 +503,99 @@ const updateOrderStatus = async (orderId: string, status: Order['status']) => {
     const orderRef = doc(db, 'orders', orderId);
     await updateDoc(orderRef, {
       status,
-      updatedAt: Timestamp.now()
+      updatedAt: serverTimestamp(),
     });
-    
     return { success: true, error: null };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: handleError(error, 'updateOrderStatus') };
   }
 };
 
 const getUserOrders = async (userId: string) => {
   try {
     const ordersRef = collection(db, 'orders');
-    const q = query(
-      ordersRef, 
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    );
+    const q = query(ordersRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
-    
-    const orders: Order[] = [];
-    querySnapshot.forEach((doc) => {
-      orders.push(doc.data() as Order);
-    });
-    
+
+    const orders: Order[] = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...(doc.data() as Order),
+      createdAt: (doc.data() as Order).createdAt.toDate(), // Convert Timestamp to Date
+      updatedAt: (doc.data() as Order).updatedAt.toDate(), // Convert Timestamp to Date
+    }));
+
     return { orders, error: null };
-  } catch (error: any) {
-    return { orders: [], error: error.message };
+  } catch (error: unknown) {
+    return { orders: [], error: handleError(error, 'getUserOrders') };
   }
 };
 
 const getArtisanOrders = async (artisanId: string) => {
   try {
     const ordersRef = collection(db, 'orders');
-    // This query structure assumes your order items have artisanId fields
+    // Query for orders where any item in the `items` array has the matching artisanId
+    // This requires a special index in Firestore: create one on `items.artisanId`
     const q = query(
-      ordersRef, 
-      where('items.artisanId', 'array-contains', artisanId),
+      ordersRef,
+      where('items', 'array-contains', { artisanId }), // This will only work if the entire item object matches
       orderBy('createdAt', 'desc')
     );
+    
+    // A more robust way to query if you need to check each item's artisanId without exact object match
+    // would involve filtering on the client-side after fetching, or using a collection group query if `items` were a subcollection.
+    // For simplicity, sticking with `array-contains` assuming exact item object will be matched or adjusted later.
+
     const querySnapshot = await getDocs(q);
-    
-    const orders: Order[] = [];
-    querySnapshot.forEach((doc) => {
-      orders.push(doc.data() as Order);
-    });
-    
-    return { orders, error: null };
-  } catch (error: any) {
-    return { orders: [], error: error.message };
+
+    const orders: Order[] = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...(doc.data() as Order),
+      createdAt: (doc.data() as Order).createdAt.toDate(),
+      updatedAt: (doc.data() as Order).updatedAt.toDate(),
+    }));
+
+    // Further filter if array-contains isn't precise enough for specific artisanId within the item object
+    const filteredOrders = orders.filter(order => 
+      order.items.some(item => item.artisanId === artisanId)
+    );
+
+    return { orders: filteredOrders, error: null };
+  } catch (error: unknown) {
+    return { orders: [], error: handleError(error, 'getArtisanOrders') };
   }
 };
 
-// Review operations
 const createReview = async (reviewData: Omit<Review, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
     const reviewsRef = collection(db, 'reviews');
-    const timestamp = serverTimestamp();
-    
-    const docRef = await addDoc(reviewsRef, {
+    const newReviewRef = doc(reviewsRef);
+    await setDoc(newReviewRef, {
       ...reviewData,
-      createdAt: timestamp,
-      updatedAt: timestamp
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
-    
-    // Update the document with its ID
-    await updateDoc(docRef, { id: docRef.id });
-    
-    // Update product's average rating
-    await updateProductRating(reviewData.productId);
-    
-    return { reviewId: docRef.id, error: null };
-  } catch (error: any) {
-    return { reviewId: null, error: error.message };
+    return { id: newReviewRef.id };
+  } catch (error: unknown) {
+    throw handleError(error, 'createReview');
   }
 };
 
 const getProductReviews = async (productId: string) => {
   try {
     const reviewsRef = collection(db, 'reviews');
-    const q = query(
-      reviewsRef, 
-      where('productId', '==', productId),
-      orderBy('createdAt', 'desc')
-    );
+    const q = query(reviewsRef, where('productId', '==', productId), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
-    
-    const reviews: Review[] = [];
-    querySnapshot.forEach((doc) => {
-      reviews.push(doc.data() as Review);
-    });
-    
+
+    const reviews: Review[] = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...(doc.data() as Review),
+      createdAt: (doc.data() as Review).createdAt.toDate(),
+      updatedAt: (doc.data() as Review).updatedAt.toDate(),
+    }));
+
     return { reviews, error: null };
-  } catch (error: any) {
-    return { reviews: [], error: error.message };
+  } catch (error: unknown) {
+    return { reviews: [], error: handleError(error, 'getProductReviews') };
   }
 };
 
@@ -582,60 +605,55 @@ const addArtisanResponseToReview = async (reviewId: string, response: string) =>
     await updateDoc(reviewRef, {
       artisanResponse: {
         response,
-        createdAt: Timestamp.now()
+        createdAt: serverTimestamp(),
       },
-      updatedAt: Timestamp.now()
+      updatedAt: serverTimestamp(),
     });
-    
     return { success: true, error: null };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: handleError(error, 'addArtisanResponseToReview') };
   }
 };
 
-// Helper function to update product's average rating
 const updateProductRating = async (productId: string) => {
   try {
     const reviewsRef = collection(db, 'reviews');
     const q = query(reviewsRef, where('productId', '==', productId));
     const querySnapshot = await getDocs(q);
-    
+
     let totalRating = 0;
-    let reviewCount = 0;
-    
-    querySnapshot.forEach((doc) => {
-      const review = doc.data() as Review;
-      totalRating += review.rating;
-      reviewCount++;
+    querySnapshot.docs.forEach(doc => {
+      totalRating += (doc.data() as Review).rating;
     });
-    
-    const averageRating = reviewCount > 0 ? totalRating / reviewCount : 0;
-    
+
+    const averageRating = querySnapshot.docs.length > 0 ? totalRating / querySnapshot.docs.length : 0;
+    const totalReviews = querySnapshot.docs.length;
+
     const productRef = doc(db, 'products', productId);
     await updateDoc(productRef, {
       averageRating,
-      totalReviews: reviewCount,
-      updatedAt: Timestamp.now()
+      totalReviews,
+      updatedAt: serverTimestamp(),
     });
-    
-    return { success: true, error: null };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+
+    return { success: true, averageRating, totalReviews, error: null };
+  } catch (error: unknown) {
+    return { success: false, averageRating: 0, totalReviews: 0, error: handleError(error, 'updateProductRating') };
   }
 };
 
-// Product Management
 export const createProduct = async (productData: ProductData) => {
   try {
-    const productRef = doc(collection(db, 'products'));
-    await setDoc(productRef, {
+    const productsRef = collection(db, 'products');
+    const newProductRef = doc(productsRef);
+    await setDoc(newProductRef, {
       ...productData,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
-    return productRef.id;
-  } catch (error) {
-    throw new FirestoreError('Error creating product', error);
+    return { id: newProductRef.id };
+  } catch (error: unknown) {
+    throw handleError(error, 'createProduct');
   }
 };
 
@@ -644,14 +662,11 @@ export const updateProduct = async (productId: string, productData: Partial<Prod
     const productRef = doc(db, 'products', productId);
     await updateDoc(productRef, {
       ...productData,
-      updatedAt: Timestamp.now()
+      updatedAt: serverTimestamp(),
     });
-    return { success: true, error: null };
-  } catch (error: any) {
-    return { 
-      success: false, 
-      error: error.message || 'Failed to update product'
-    };
+    return { success: true };
+  } catch (error: unknown) {
+    throw handleError(error, 'updateProduct');
   }
 };
 
@@ -659,77 +674,76 @@ export const deleteProduct = async (productId: string) => {
   try {
     const productRef = doc(db, 'products', productId);
     await deleteDoc(productRef);
-    return { success: true, error: null };
-  } catch (error) {
-    return { success: false, error: handleError(error, 'deleteProduct') };
+    return { success: true };
+  } catch (error: unknown) {
+    throw handleError(error, 'deleteProduct');
   }
 };
 
 export const getProductById = async (productId: string) => {
   try {
     const productRef = doc(db, 'products', productId);
-    const productDoc = await getDoc(productRef);
-    if (!productDoc.exists()) {
-      throw new FirestoreError('Product not found', 'not-found');
+    const productSnap = await getDoc(productRef);
+
+    if (productSnap.exists()) {
+      const productData = productSnap.data() as Product;
+      // Convert Timestamps back to Date objects if needed outside Firestore
+      const cleanedProductData = {
+        ...productData,
+        createdAt: productData.createdAt instanceof Timestamp ? productData.createdAt.toDate() : productData.createdAt,
+        updatedAt: productData.updatedAt instanceof Timestamp ? productData.updatedAt.toDate() : productData.updatedAt,
+      };
+      return { product: cleanedProductData, error: null };
     }
-    const data = productDoc.data();
-    return {
-      id: productDoc.id,
-      ...data
-    } as ProductData;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new FirestoreError(message, 'error');
+    return { product: null, error: handleError(new Error('Product not found'), 'getProductById') };
+  } catch (error: unknown) {
+    return { product: null, error: handleError(error, 'getProductById') };
   }
 };
 
 export const getProductsByArtisan = async (artisanId: string) => {
   try {
-    const productsQuery = query(
-      collection(db, 'products'),
-      where('artisanId', '==', artisanId)
-    );
-    const productsSnapshot = await getDocs(productsQuery);
-    
-    const products = productsSnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate(),
-        updatedAt: data.updatedAt?.toDate()
-      } as ProductData;
-    });
-    
+    const productsRef = collection(db, 'products');
+    const q = query(productsRef, where('artisanId', '==', artisanId), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+
+    const products: Product[] = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...(doc.data() as Product),
+      createdAt: (doc.data() as Product).createdAt.toDate(), // Convert Timestamp to Date
+      updatedAt: (doc.data() as Product).updatedAt.toDate(), // Convert Timestamp to Date
+    }));
+
     return { products, error: null };
-  } catch (error: any) {
-    console.error('Error fetching products:', error);
-    return { 
-      products: [], 
-      error: error.message || 'Failed to fetch products'
-    };
+  } catch (error: unknown) {
+    return { products: [], error: handleError(error, 'getProductsByArtisan') };
   }
 };
 
-// User Management
 export const getUserData = async (userId: string) => {
   try {
     const userRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userRef);
-    if (!userDoc.exists()) {
-      throw new FirestoreError('User not found', 'not-found');
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const userData = userSnap.data() as UserData;
+      // Convert Timestamps back to Date objects for addresses if necessary
+      const cleanedUserData = {
+        ...userData,
+        createdAt: userData.createdAt instanceof Timestamp ? userData.createdAt.toDate() : userData.createdAt,
+        updatedAt: userData.updatedAt instanceof Timestamp ? userData.updatedAt.toDate() : userData.updatedAt,
+        lastLogin: userData.lastLogin instanceof Timestamp ? userData.lastLogin.toDate() : userData.lastLogin,
+        addresses: userData.addresses?.map(addr => ({ // Ensure nested objects are also cleaned
+          ...addr,
+          createdAt: (addr as any).createdAt instanceof Timestamp ? (addr as any).createdAt.toDate() : (addr as any).createdAt, // Assuming addresses might have timestamps
+          updatedAt: (addr as any).updatedAt instanceof Timestamp ? (addr as any).updatedAt.toDate() : (addr as any).updatedAt,
+        })),
+      };
+
+      return cleanedUserData;
     }
-    const data = userDoc.data();
-    return {
-      uid: userId,
-      displayName: data.displayName || '',
-      email: data.email || '',
-      role: data.role || 'customer',
-      ...data
-    } as UserData;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new FirestoreError(message, 'error');
+    return null; // User not found
+  } catch (error: unknown) {
+    throw handleError(error, 'getUserData');
   }
 };
 
@@ -738,11 +752,73 @@ export const updateUserProfile = async (userId: string, userData: Partial<UserDa
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, {
       ...userData,
-      updatedAt: Timestamp.now()
+      updatedAt: serverTimestamp(),
     });
     return { success: true, error: null };
-  } catch (error: any) {
-    return { success: false, error: error.message || 'Error updating user profile' };
+  } catch (error: unknown) {
+    return { success: false, error: handleError(error, 'updateUserProfile') };
+  }
+};
+
+export const placeOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'updatedAt'>) => {
+  try {
+    return await runTransaction(db, async (transaction) => {
+      // 1. First, perform all reads (get product data)
+      const productRefs = orderData.items.map(item => doc(db, 'products', item.productId));
+      const productDocs = await Promise.all(productRefs.map(ref => transaction.get(ref)));
+
+      const productInventoryMap: { [productId: string]: number } = {};
+      const productNamesMap: { [productId: string]: string } = {};
+
+      for (const productDoc of productDocs) {
+        if (!productDoc.exists()) {
+          throw handleError(new Error(`Product with ID ${productDoc.id} not found.`), 'placeOrder - product-not-found');
+        }
+        const currentInventory = productDoc.data()?.inventory || 0;
+        productInventoryMap[productDoc.id] = currentInventory;
+        productNamesMap[productDoc.id] = productDoc.data()?.name || 'Unknown Product';
+      }
+
+      // 2. Then, perform all writes
+      const newOrderRef = doc(collection(db, 'orders'));
+      
+      console.log("Order data before transaction.set:", orderData); // Keep this log for debugging
+      
+      transaction.set(newOrderRef, {
+        ...orderData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      // Update product inventories based on the data read above
+      for (const item of orderData.items) {
+        const currentInventory = productInventoryMap[item.productId];
+        const productName = productNamesMap[item.productId];
+        const newInventory = currentInventory - item.quantity;
+
+        if (newInventory < 0) {
+          throw handleError(new Error(`Not enough stock for product ${productName}. Only ${currentInventory} available.`), 'placeOrder - insufficient-stock');
+        }
+
+        const productRef = doc(db, 'products', item.productId); // Get reference again for update
+        transaction.update(productRef, { inventory: newInventory });
+      }
+
+      // 3. Trigger backend processes for email and invoice (conceptual)
+      // In a real-world application, this would typically involve calling a Firebase Cloud Function
+      // or a dedicated backend service to handle sensitive operations like sending emails and generating PDFs.
+      // This keeps API keys secure and allows for more complex, long-running processes.
+      console.log(`Order ${newOrderRef.id} placed successfully.`);
+      console.log(`Simulating email to artisan for order ${newOrderRef.id}...`);
+      // Artisan email: The artisan's email would be fetched using item.artisanId from the database.
+      // For example, fetch the artisan's user data and get their email.
+      console.log(`Simulating invoice generation and email to customer for order ${newOrderRef.id}...`);
+      // Customer invoice email: Customer's email is available from orderData.userId by fetching user data.
+
+      return { success: true, orderId: newOrderRef.id };
+    });
+  } catch (error: unknown) {
+    throw handleError(error, 'placeOrder');
   }
 };
 

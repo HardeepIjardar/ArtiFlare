@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUserData, updateUserProfile } from '../../services/firestore';
+import { getUserData, updateUserProfile, placeOrder, removeUndefined } from '../../services/firestore';
 import { useCart } from '../../contexts/CartContext';
-import type { UserData } from '../../services/firestore';
+import type { UserData, OrderItem, Address } from '../../services/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { useCurrency } from '../../contexts/CurrencyContext';
 
 const CheckoutPage: React.FC = () => {
   const { currentUser } = useAuth();
-  const { cartItems, cartTotal } = useCart();
+  const { cartItems, cartTotal, clearCart } = useCart();
   const navigate = useNavigate();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<string>('');
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('card');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('cod');
+  const [selectedDeliveryOption, setSelectedDeliveryOption] = useState<string>('standard');
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [newAddress, setNewAddress] = useState({
     street: '',
@@ -43,6 +44,9 @@ const CheckoutPage: React.FC = () => {
       try {
         const data = await getUserData(currentUser.uid);
         setUserData(data);
+        
+        if (!data) return;
+
         // Set default address if available
         if (data.addresses?.length) {
           const defaultAddress = data.addresses.find(addr => addr.isDefault);
@@ -63,6 +67,10 @@ const CheckoutPage: React.FC = () => {
 
   const handlePaymentMethodChange = (method: string) => {
     setSelectedPaymentMethod(method);
+  };
+
+  const handleDeliveryOptionChange = (option: string) => {
+    setSelectedDeliveryOption(option);
   };
 
   const handleNewAddressSubmit = async (e: React.FormEvent) => {
@@ -147,9 +155,126 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
-  const shippingCost = 5.99;
+  const shippingCost = (() => {
+    switch (selectedDeliveryOption) {
+      case 'standard':
+        return 5.99;
+      case 'express':
+        return 12.99;
+      case 'sos':
+        return 24.99;
+      default:
+        return 5.99; // Default to standard shipping
+    }
+  })();
   const tax = cartTotal * 0.08; // 8% tax rate
   const orderTotal = cartTotal + shippingCost + tax;
+
+  const handlePlaceOrder = async () => {
+    if (!currentUser) {
+      alert('Please log in to place an order.');
+      return;
+    }
+
+    if (!userData) {
+      alert('User data not loaded. Please try again.');
+      return;
+    }
+
+    if (cartItems.length === 0) {
+      alert('Your cart is empty. Please add items before placing an order.');
+      return;
+    }
+
+    if (!selectedAddress) {
+      alert('Please select a shipping address.');
+      return;
+    }
+
+    // Ensure addresses are available before proceeding
+    const addresses = userData.addresses || []; // Provide a default empty array if addresses is undefined/null
+    if (addresses.length === 0) {
+      alert('Please add and select a shipping address.');
+      return;
+    }
+
+    const selectedAddressData: Address | undefined = addresses.find(addr => addr.id === selectedAddress);
+    if (!selectedAddressData) {
+      alert('Selected address not found.');
+      return;
+    }
+
+    // Ensure no undefined values are passed to Firestore for the address
+    const cleanedShippingAddress = {
+      id: selectedAddressData.id,
+      street: selectedAddressData.street,
+      city: selectedAddressData.city,
+      state: selectedAddressData.state,
+      zipCode: selectedAddressData.zipCode,
+      country: selectedAddressData.country,
+      isDefault: selectedAddressData.isDefault,
+      label: selectedAddressData.label === undefined ? null : selectedAddressData.label, // Convert undefined to null, keep existing value otherwise
+    };
+
+    try {
+      const orderItems = cartItems.map(item => {
+        const orderItem: OrderItem = {
+          productId: item.id,
+          productName: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          totalPrice: item.price * item.quantity,
+          currency: item.currency,
+          artisanId: item.artisan, // Assuming item.artisan contains the artisanId
+        };
+
+        if (item.image) {
+          orderItem.image = item.image;
+        }
+
+        if (item.customization) {
+          try {
+            // Attempt to parse customization string. If it fails, customization will be skipped.
+            orderItem.customizations = JSON.parse(item.customization);
+          } catch (e) {
+            console.error("Error parsing customization string for item", item.id, ":", e);
+            // Do not include customizations if parsing fails to avoid undefined or invalid data
+          }
+        }
+        return orderItem;
+      });
+
+      const orderData = {
+        userId: currentUser.uid,
+        items: orderItems,
+        total: orderTotal,
+        status: 'pending' as const, // Explicitly cast to literal type
+        shippingAddress: cleanedShippingAddress, // Use the cleaned address
+        paymentMethod: selectedPaymentMethod,
+        paymentStatus: 'pending' as const, // Explicitly cast to literal type
+        shippingMethod: selectedDeliveryOption,
+        shippingCost: shippingCost,
+        tax: tax,
+        discount: 0, // Assuming no discounts for now
+      };
+
+      // Clean orderData to remove any undefined fields before sending to Firestore
+      const cleanedOrderData = removeUndefined(orderData);
+
+      const result = await placeOrder(cleanedOrderData);
+
+      if (result?.success) {
+        alert('Order placed successfully!');
+        clearCart(); // Empty the customer's cart
+        navigate('/thank-you'); // Redirect to the new thank you page
+      } 
+    } catch (error) {
+      console.error('Error placing order:', error);
+      // Check if the error is a FirestoreError or a generic Error
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      alert(`An error occurred while placing your order: ${errorMessage}. Please try again.`);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -356,13 +481,16 @@ const CheckoutPage: React.FC = () => {
                   name="deliveryOption"
                   type="radio"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
-                  defaultChecked
+                  checked={selectedDeliveryOption === 'standard'}
+                  onChange={() => handleDeliveryOptionChange('standard')}
                 />
                 <label htmlFor="standard" className="ml-3 flex flex-col">
                   <span className="text-dark font-medium">Standard Delivery</span>
                   <span className="text-dark-500 text-sm">3-5 business days</span>
                 </label>
-                <span className="ml-auto text-dark">$5.99</span>
+                <span className="ml-auto text-dark">
+                  {formatPrice(convertPrice(5.99, 'INR'))}
+                </span>
               </div>
               <div className="flex items-center p-4 border border-gray-200 rounded-lg">
                 <input
@@ -370,12 +498,16 @@ const CheckoutPage: React.FC = () => {
                   name="deliveryOption"
                   type="radio"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
+                  checked={selectedDeliveryOption === 'express'}
+                  onChange={() => handleDeliveryOptionChange('express')}
                 />
                 <label htmlFor="express" className="ml-3 flex flex-col">
                   <span className="text-dark font-medium">Express Delivery</span>
                   <span className="text-dark-500 text-sm">1-2 business days</span>
                 </label>
-                <span className="ml-auto text-dark">$12.99</span>
+                <span className="ml-auto text-dark">
+                  {formatPrice(convertPrice(12.99, 'INR'))}
+                </span>
               </div>
               <div className="flex items-center p-4 border border-primary-200 bg-primary-50 rounded-lg">
                 <input
@@ -383,12 +515,16 @@ const CheckoutPage: React.FC = () => {
                   name="deliveryOption"
                   type="radio"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
+                  checked={selectedDeliveryOption === 'sos'}
+                  onChange={() => handleDeliveryOptionChange('sos')}
                 />
                 <label htmlFor="sos" className="ml-3 flex flex-col">
                   <span className="text-dark font-medium">SOS Delivery</span>
                   <span className="text-primary text-sm">Delivered within 3 hours (select areas)</span>
                 </label>
-                <span className="ml-auto text-primary font-bold">$24.99</span>
+                <span className="ml-auto text-primary font-bold">
+                  {formatPrice(convertPrice(24.99, 'INR'))}
+                </span>
               </div>
             </div>
           </div>
@@ -396,107 +532,6 @@ const CheckoutPage: React.FC = () => {
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-bold text-dark mb-4">Payment Method</h2>
             <div className="space-y-4">
-              {/* Credit/Debit Card */}
-              <div className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center">
-                  <input
-                    id="card"
-                    name="paymentMethod"
-                    type="radio"
-                    checked={selectedPaymentMethod === 'card'}
-                    onChange={() => handlePaymentMethodChange('card')}
-                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
-                  />
-                  <label htmlFor="card" className="ml-3">
-                    <span className="text-dark font-medium">Credit / Debit Card</span>
-                  </label>
-                </div>
-                {selectedPaymentMethod === 'card' && (
-                  <div className="mt-4 space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-dark-600 mb-1">Card Number</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                        placeholder="1234 1234 1234 1234"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-dark-600 mb-1">Expiration Date</label>
-                        <input
-                          type="text"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                          placeholder="MM / YY"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-dark-600 mb-1">CVC</label>
-                        <input
-                          type="text"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                          placeholder="123"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* UPI */}
-              <div className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center">
-                  <input
-                    id="upi"
-                    name="paymentMethod"
-                    type="radio"
-                    checked={selectedPaymentMethod === 'upi'}
-                    onChange={() => handlePaymentMethodChange('upi')}
-                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
-                  />
-                  <label htmlFor="upi" className="ml-3">
-                    <span className="text-dark font-medium">UPI</span>
-                  </label>
-                </div>
-                {selectedPaymentMethod === 'upi' && (
-                  <div className="mt-4">
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                      placeholder="Enter UPI ID"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Net Banking */}
-              <div className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center">
-                  <input
-                    id="netbanking"
-                    name="paymentMethod"
-                    type="radio"
-                    checked={selectedPaymentMethod === 'netbanking'}
-                    onChange={() => handlePaymentMethodChange('netbanking')}
-                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
-                  />
-                  <label htmlFor="netbanking" className="ml-3">
-                    <span className="text-dark font-medium">Net Banking</span>
-                  </label>
-                </div>
-                {selectedPaymentMethod === 'netbanking' && (
-                  <div className="mt-4">
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary">
-                      <option value="">Select Bank</option>
-                      <option value="sbi">State Bank of India</option>
-                      <option value="hdfc">HDFC Bank</option>
-                      <option value="icici">ICICI Bank</option>
-                      <option value="axis">Axis Bank</option>
-                    </select>
-                  </div>
-                )}
-              </div>
-
               {/* COD */}
               <div className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex items-center">
@@ -546,7 +581,10 @@ const CheckoutPage: React.FC = () => {
                 </span>
               </div>
             </div>
-            <button className="w-full bg-primary hover:bg-primary-700 text-white font-bold py-2 px-4 rounded mt-6">
+            <button 
+              onClick={handlePlaceOrder}
+              className="w-full bg-primary hover:bg-primary-700 text-white font-bold py-2 px-4 rounded mt-6"
+            >
               Place Order
             </button>
             <Link 

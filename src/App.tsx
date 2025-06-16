@@ -30,6 +30,7 @@ import ShippingPage from './pages/customer/ShippingPage';
 import ReturnsPage from './pages/customer/ReturnsPage';
 import PrivacyPage from './pages/customer/PrivacyPage';
 import TermsPage from './pages/customer/TermsPage';
+import ThankYouPage from './pages/customer/ThankYouPage';
 
 // Auth pages
 import LoginPage from './pages/auth/LoginPage';
@@ -122,6 +123,7 @@ function RoutesWithAuth() {
         <Route path="privacy" element={<PrivacyPage />} />
         <Route path="terms" element={<TermsPage />} />
         <Route path="cart" element={<CartPage />} />
+        <Route path="thank-you" element={<ThankYouPage />} />
       </Route>
 
       {/* Auth Routes */}
