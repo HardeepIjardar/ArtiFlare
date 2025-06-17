@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUserData, updateUserProfile, placeOrder, removeUndefined } from '../../services/firestore';
+import { getUserData, updateUserProfile, processOrder, removeUndefined } from '../../services/firestore';
 import { useCart } from '../../contexts/CartContext';
 import type { UserData, OrderItem, Address } from '../../services/firestore';
 import { v4 as uuidv4 } from 'uuid';
@@ -42,14 +42,15 @@ const CheckoutPage: React.FC = () => {
         return;
       }
       try {
-        const data = await getUserData(currentUser.uid);
-        setUserData(data);
+        const result = await getUserData(currentUser.uid);
+        setUserData(result.userData);
+        console.log("CheckoutPage: Fetched user data", result.userData);
         
-        if (!data) return;
+        if (!result.userData) return;
 
         // Set default address if available
-        if (data.addresses?.length) {
-          const defaultAddress = data.addresses.find(addr => addr.isDefault);
+        if (result.userData.addresses?.length) {
+          const defaultAddress = result.userData.addresses.find(addr => addr.isDefault);
           if (defaultAddress) {
             setSelectedAddress(defaultAddress.id);
           }
@@ -92,7 +93,7 @@ const CheckoutPage: React.FC = () => {
       const refreshedUserData = await getUserData(currentUser.uid);
 
       // 3. Update the local state so the UI re-renders
-      setUserData(refreshedUserData);
+      setUserData(refreshedUserData.userData);
 
       // 4. Optionally, select the new address and reset the form
       setSelectedAddress(newAddressData.id);
@@ -130,7 +131,7 @@ const CheckoutPage: React.FC = () => {
         return;
       }
       const refreshedUserData = await getUserData(currentUser.uid);
-      setUserData(refreshedUserData);
+      setUserData(refreshedUserData.userData);
       setEditingAddressId(null);
     } catch (error) {
       console.error('Error updating address:', error);
@@ -147,7 +148,7 @@ const CheckoutPage: React.FC = () => {
         return;
       }
       const refreshedUserData = await getUserData(currentUser.uid);
-      setUserData(refreshedUserData);
+      setUserData(refreshedUserData.userData);
       // If the deleted address was selected, clear selection
       if (selectedAddress === addressId) setSelectedAddress('');
     } catch (error) {
@@ -261,18 +262,16 @@ const CheckoutPage: React.FC = () => {
       // Clean orderData to remove any undefined fields before sending to Firestore
       const cleanedOrderData = removeUndefined(orderData);
 
-      const result = await placeOrder(cleanedOrderData);
+      const result = await processOrder(cleanedOrderData, orderItems);
 
-      if (result?.success) {
+      if (result?.id) {
         alert('Order placed successfully!');
         clearCart(); // Empty the customer's cart
         navigate('/thank-you'); // Redirect to the new thank you page
       } 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error placing order:', error);
-      // Check if the error is a FirestoreError or a generic Error
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      alert(`An error occurred while placing your order: ${errorMessage}. Please try again.`);
+      alert(`Failed to place order: ${error.message || 'An unknown error occurred'}`);
     }
   };
 

@@ -1027,3 +1027,57 @@ export const addOrUpdateWishlist = async (userId: string, productId: string, act
     return { success: false, error: handleError(error, 'addOrUpdateWishlist') };
   }
 };
+
+export const processOrder = async (
+  orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>,
+  cartItems: OrderItem[]
+) => {
+  try {
+    const orderId = await runTransaction(db, async (transaction) => {
+      // 1. Create the new order document reference
+      const newOrderRef = doc(collection(db, 'orders'));
+
+      // 2. Prepare order data with server timestamps
+      const orderToCreate = {
+        ...orderData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      // 3. Check and update product inventory for each item in the order
+      for (const item of cartItems) {
+        const productRef = doc(db, 'products', item.productId);
+        const productSnap = await transaction.get(productRef);
+
+        if (!productSnap.exists()) {
+          throw new FirestoreError('Product not found.', 'product-not-found');
+        }
+
+        const currentInventory = productSnap.data()?.inventory as number;
+        const quantityToOrder = item.quantity;
+
+        if (currentInventory < quantityToOrder) {
+          throw new FirestoreError(`Not enough inventory for product ${item.productName}. Available: ${currentInventory}, Requested: ${quantityToOrder}`, 'insufficient-inventory');
+        }
+
+        // Decrement inventory
+        transaction.update(productRef, {
+          inventory: currentInventory - quantityToOrder,
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      // 4. Set the new order document
+      transaction.set(newOrderRef, orderToCreate);
+
+      return newOrderRef.id;
+    });
+
+    return { id: orderId, error: null };
+  } catch (error: unknown) {
+    if (error instanceof FirestoreError) {
+      throw error; // Re-throw custom FirestoreError
+    }
+    throw handleError(error, 'processOrder'); // Use existing handleError for other errors
+  }
+};

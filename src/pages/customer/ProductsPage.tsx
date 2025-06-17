@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { getProducts, getUserData, Product } from '../../services/firestore';
 import ProductCard from '../../components/ProductCard';
+import { getErrorMessage } from '../../utils/errorHandling';
+import { db } from '../../services/firebase';
 
 const ProductsPage: React.FC = () => {
   const { addToCart, updateQuantity: updateCartQuantity, cartItems, removeFromCart } = useCart();
-  const [showQuantitySelector, setShowQuantitySelector] = useState<Record<string, boolean>>({});
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [showQuantitySelector, setShowQuantitySelector] = useState<{ [key: string]: boolean }>({});
+  const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +27,7 @@ const ProductsPage: React.FC = () => {
       try {
         const { products, error } = await getProducts();
         if (error) {
-          setError(error);
+          setError(getErrorMessage(error));
           // Debug log
           console.error('ProductsPage error:', error);
           // Log Firebase project ID
@@ -33,14 +35,27 @@ const ProductsPage: React.FC = () => {
           console.log('Firebase project ID:', db.app.options.projectId);
         } else {
           setProducts(products || []);
+          // Initialize quantities and showQuantitySelector
+          const initialQuantities: { [key: string]: number } = {};
+          const initialShowQuantitySelector: { [key: string]: boolean } = {};
+          products.forEach(product => {
+            if (product.id) {
+              initialQuantities[product.id] = 1;
+              initialShowQuantitySelector[product.id] = false;
+            }
+          });
+          setQuantities(initialQuantities);
+          setShowQuantitySelector(initialShowQuantitySelector);
+
           // Fetch artisan names
           const uniqueArtisanIds = Array.from(new Set(products.map(p => p.artisanId)));
           const namesMap: { [key: string]: string } = {};
           await Promise.all(uniqueArtisanIds.map(async (artisanId) => {
             try {
-              const userData = await getUserData(artisanId);
-              if (userData) {
-                namesMap[artisanId] = userData.companyName || userData.displayName || 'Artisan';
+              const result = await getUserData(artisanId);
+              if (result.userData) {
+                const name = result.userData.companyName || result.userData.displayName || 'Artisan';
+                namesMap[artisanId] = name;
               }
             } catch (err) {
               console.error(`Error fetching artisan data for ${artisanId}:`, err);
@@ -50,7 +65,7 @@ const ProductsPage: React.FC = () => {
           setArtisanNames(namesMap);
         }
       } catch (err) {
-        setError('Failed to fetch products');
+        setError(getErrorMessage(err));
         // Debug log
         console.error('ProductsPage catch error:', err);
         // @ts-ignore
@@ -78,44 +93,32 @@ const ProductsPage: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [filterOpen]);
 
-  const handleAddToCartClick = (productId: string) => {
+  const handleAddToCart = (productId: string) => {
     const product = products.find(p => p.id === productId);
-    if (!product) return;
-    
+    if (product && product.id) {
     addToCart({
       id: product.id,
       name: product.name,
       price: product.price,
       quantity: 1,
       artisan: product.artisanId,
-      image: product.images[0]
+        image: product.images[0],
+        currency: product.currency
     });
-    
     setShowQuantitySelector(prev => ({ ...prev, [productId]: true }));
-    setQuantities(prev => ({ ...prev, [productId]: 1 }));
+    }
   };
 
-  const incrementQuantity = (productId: string) => {
+  const handleIncrement = (productId: string) => {
     const newQuantity = (quantities[productId] || 1) + 1;
     setQuantities(prev => ({ ...prev, [productId]: newQuantity }));
     updateCartQuantity(productId, newQuantity);
   };
 
-  const decrementQuantity = (productId: string) => {
-    const currentQuantity = quantities[productId] || 1;
-    if (currentQuantity <= 1) {
-      removeFromCart(productId);
-      setShowQuantitySelector(prev => ({ ...prev, [productId]: false }));
-      setQuantities(prev => {
-        const newQuantities = { ...prev };
-        delete newQuantities[productId];
-        return newQuantities;
-      });
-    } else {
-      const newQuantity = currentQuantity - 1;
+  const handleDecrement = (productId: string) => {
+    const newQuantity = Math.max(1, (quantities[productId] || 1) - 1);
       setQuantities(prev => ({ ...prev, [productId]: newQuantity }));
       updateCartQuantity(productId, newQuantity);
-    }
   };
 
   // Filter products by all selected filters
@@ -136,7 +139,9 @@ const ProductsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center">Loading products...</div>
+        <div className="flex justify-center items-center h-40">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
       </div>
     );
   }
@@ -144,7 +149,15 @@ const ProductsPage: React.FC = () => {
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center text-red-500">{error}</div>
+        <div className="text-center text-red-500">
+          <p className="mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="text-primary hover:text-primary-700 underline"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
@@ -270,17 +283,19 @@ const ProductsPage: React.FC = () => {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredProducts.map(product => (
+          product.id && (
           <ProductCard
             key={product.id}
             product={product}
             artisanName={artisanNames[product.artisanId] || 'Artisan'}
             inCart={cartItems.some(item => item.id === product.id)}
             quantity={quantities[product.id] || 1}
-            showQuantitySelector={!!showQuantitySelector[product.id]}
-            onAddToCart={handleAddToCartClick}
-            onIncrement={incrementQuantity}
-            onDecrement={decrementQuantity}
+              showQuantitySelector={showQuantitySelector[product.id] || false}
+              onAddToCart={handleAddToCart}
+              onIncrement={handleIncrement}
+              onDecrement={handleDecrement}
           />
+          )
         ))}
       </div>
     </div>

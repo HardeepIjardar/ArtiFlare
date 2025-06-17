@@ -34,21 +34,26 @@ const ProductDetailPage: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const product = await getProductById(id);
-        if (typeof product.id === 'string') {
+        const { product: fetchedProduct, error: fetchError } = await getProductById(id);
+        
+        if (fetchError) {
+          setError(fetchError.message || 'Failed to fetch product');
+          setProduct(null);
+        } else if (fetchedProduct) {
           setProduct({
-            ...product,
-            id: product.id as string,
-            createdAt: product.createdAt ? product.createdAt : new Date(),
-            updatedAt: product.updatedAt ? product.updatedAt : new Date(),
-            attributes: product.attributes ?? {},
-            tags: product.tags ?? [],
-            isCustomizable: product.isCustomizable ?? false
+            ...fetchedProduct,
+            // Ensure id is always a string as per ProductCardProps expectation
+            id: fetchedProduct.id || '', 
+            createdAt: fetchedProduct.createdAt ? fetchedProduct.createdAt : new Date(),
+            updatedAt: fetchedProduct.updatedAt ? fetchedProduct.updatedAt : new Date(),
+            attributes: fetchedProduct.attributes ?? {},
+            tags: fetchedProduct.tags ?? [],
+            isCustomizable: fetchedProduct.isCustomizable ?? false
           });
-          setSelectedImage(product.images && product.images.length > 0 ? product.images[0] : null);
+          setSelectedImage(fetchedProduct.images && fetchedProduct.images.length > 0 ? fetchedProduct.images[0] : null);
           // Fetch artisan name
           try {
-            const userData = await getUserData(product.artisanId);
+            const { userData } = await getUserData(fetchedProduct.artisanId);
             setArtisanName(userData?.companyName || userData?.displayName || 'Artisan');
           } catch (e) {
             setArtisanName('Artisan');
@@ -99,11 +104,11 @@ const ProductDetailPage: React.FC = () => {
       if (!id) return;
       setReviewLoading(true);
       try {
-        const { reviews, error } = await getProductReviews(id);
-        if (error) setReviewError(error);
-        else setReviews(reviews);
-      } catch (err) {
-        setReviewError('Failed to fetch reviews');
+        const { reviews: fetchedReviews, error: reviewFetchError } = await getProductReviews(id);
+        if (reviewFetchError) setReviewError(reviewFetchError.message || 'Failed to fetch reviews');
+        else setReviews(fetchedReviews);
+      } catch (err: any) {
+        setReviewError(err.message || 'Failed to fetch reviews');
       } finally {
         setReviewLoading(false);
       }
@@ -115,16 +120,16 @@ const ProductDetailPage: React.FC = () => {
   useEffect(() => {
     const fetchRelated = async () => {
       if (!product) return;
-      const { products: rel, error } = await getProducts();
-      if (!error) {
-        setRelatedProducts(rel.filter(p => p.id !== product.id && (p.category === product.category || p.artisanId === product.artisanId)).slice(0, 4));
+      const { products: rel, error: productsError } = await getProducts();
+      if (!productsError) {
+        setRelatedProducts(rel.filter(p => p.id && p.id !== product.id && (p.category === product.category || p.artisanId === product.artisanId)).slice(0, 4));
       }
     };
     fetchRelated();
   }, [product]);
 
   const handleAddToCart = () => {
-    if (!product) return;
+    if (!product || !product.id) return;
     
     addToCart({
       id: product.id,
@@ -133,21 +138,22 @@ const ProductDetailPage: React.FC = () => {
       quantity: quantity,
       artisan: product.artisanId,
       customization: customization || undefined,
-      image: product.images[0]
+      image: product.images[0],
+      currency: product.currency,
     });
 
     setShowQuantitySelector(true);
   };
 
   const incrementQuantity = () => {
-    if (!product) return;
+    if (!product || !product.id) return;
     const newQuantity = quantity + 1;
     setQuantity(newQuantity);
     updateCartQuantity(product.id, newQuantity);
   };
 
   const decrementQuantity = () => {
-    if (!product) return;
+    if (!product || !product.id) return;
     if (quantity <= 1) {
       removeFromCart(product.id);
       setShowQuantitySelector(false);
@@ -161,7 +167,7 @@ const ProductDetailPage: React.FC = () => {
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || !product) return;
+    if (!currentUser || !product || !product.id) return;
     setSubmittingReview(true);
     setReviewError(null);
     try {
@@ -172,17 +178,26 @@ const ProductDetailPage: React.FC = () => {
         rating: reviewRating,
         comment: reviewText,
       };
-      const { error } = await createReview(reviewData);
-      if (error) setReviewError(error);
-      else {
-        setReviewText('');
-        setReviewRating(5);
-        // Refresh reviews
-        const { reviews } = await getProductReviews(product.id);
-        setReviews(reviews);
+      // The createReview function in firestore.ts returns { id: string } or throws an error.
+      // So, we just call it and catch potential errors.
+      const { id: newReviewId } = await createReview(reviewData);
+
+      setReviewText('');
+      setReviewRating(5);
+      // Manually add the new review to the state for immediate display
+      if (newReviewId) {
+        setReviews(prevReviews => [
+          {
+            id: newReviewId,
+            ...reviewData,
+            createdAt: new Date(), // Use client-side date for immediate display, will be updated by serverTimestamp on next fetch
+            updatedAt: new Date(),
+          },
+          ...prevReviews
+        ]);
       }
-    } catch (err) {
-      setReviewError('Failed to submit review');
+    } catch (err: any) {
+      setReviewError(err.message || 'Failed to submit review');
     } finally {
       setSubmittingReview(false);
     }
@@ -199,7 +214,10 @@ const ProductDetailPage: React.FC = () => {
   if (error || !product) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center text-red-500">{error || 'Product not found'}</div>
+        <div className="text-center text-red-500 text-xl font-medium">Product not found</div>
+        <div className="text-center mt-4">
+          <Link to="/products" className="text-primary hover:underline font-medium">&larr; Back to All Products</Link>
+        </div>
       </div>
     );
   }
@@ -269,44 +287,32 @@ const ProductDetailPage: React.FC = () => {
               </div>
             )}
             <div className="flex items-center space-x-4 mb-6">
-              {!showQuantitySelector ? (
-                <>
+              {showQuantitySelector ? (
+                <div className="flex items-center space-x-2 border border-gray-300 rounded-md px-3 py-2">
                   <button
-                    onClick={handleAddToCart}
-                    type="button"
-                    className="bg-primary text-white px-6 py-2 rounded hover:bg-primary-700 flex items-center justify-center"
+                    onClick={decrementQuantity}
+                    className="text-dark-600 hover:text-dark font-semibold focus:outline-none"
+                    aria-label="Decrease quantity"
                   >
-                    <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.35 2.7A1 1 0 007.5 17h9a1 1 0 00.85-1.53L17 13M7 13V6h13" /></svg>
-                    Add to Cart
+                    -
                   </button>
-                </>
+                  <span className="text-dark font-medium w-6 text-center">{quantity}</span>
+                  <button
+                    onClick={incrementQuantity}
+                    className="text-dark-600 hover:text-dark font-semibold focus:outline-none"
+                    aria-label="Increase quantity"
+                  >
+                    +
+                  </button>
+                </div>
               ) : (
-                <>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={decrementQuantity}
-                      type="button"
-                      className="bg-gray-200 text-dark px-2 py-1 rounded hover:bg-gray-300"
-                    >
-                      -
-                    </button>
-                    <span className="text-dark">{quantity}</span>
-                    <button
-                      onClick={incrementQuantity}
-                      type="button"
-                      className="bg-gray-200 text-dark px-2 py-1 rounded hover:bg-gray-300"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => navigate('/cart')}
-                    type="button"
-                    className="ml-4 bg-primary text-white px-6 py-2 rounded hover:bg-primary-700 transition"
-                  >
-                    Proceed to Checkout
-                  </button>
-                </>
+                <button
+                  onClick={handleAddToCart}
+                  className="bg-primary text-white font-medium px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors flex items-center justify-center text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.35 2.7A1 1 0 007.5 17h9a1 1 0 00.85-1.53L17 13M7 13V6h13" /></svg>
+                  Add to Cart
+                </button>
               )}
             </div>
             <div className="mt-6">
@@ -327,62 +333,85 @@ const ProductDetailPage: React.FC = () => {
           </div>
         </div>
         {/* Reviews Section */}
-        <div className="border-t mt-8 pt-8 px-6 bg-gray-50 rounded-b-lg">
-          <h2 className="text-2xl font-bold mb-4">Customer Reviews</h2>
+        <div className="border-t mt-8 pt-8 px-6">
+          <h2 className="text-2xl font-bold mb-4">Reviews ({reviews.length})</h2>
           {reviewLoading ? (
-            <div>Loading reviews...</div>
-          ) : reviews.length === 0 ? (
-            <div className="text-dark-500">No reviews yet.</div>
+            <div className="text-center">Loading reviews...</div>
+          ) : reviewError ? (
+            reviewError.includes('The query requires an index') ? null : (
+              <div className="text-red-500 text-center">{reviewError}</div>
+            )
           ) : (
-            <div className="space-y-4 mb-6">
-              <div className="flex items-center mb-2">
-                <span className="text-xl font-bold text-primary mr-2">{product.averageRating ? product.averageRating.toFixed(1) : '5.0'}</span>
-                <span className="text-yellow-400">{'★'.repeat(Math.round(product.averageRating || 5))}</span>
-                <span className="ml-2 text-dark-500">({product.totalReviews || reviews.length} reviews)</span>
-              </div>
-              {reviews.slice(0, 5).map((review) => (
-                <div key={review.id} className="bg-white rounded p-4 border">
-                  <div className="flex items-center mb-1">
-                    <span className="font-semibold text-dark mr-2">{review.userName}</span>
-                    <span className="text-yellow-400">{'★'.repeat(review.rating)}</span>
+            <div className="space-y-6">
+              {reviews.length === 0 ? (
+                <p className="text-dark-500">No reviews yet. Be the first to review this product!</p>
+              ) : (
+                reviews.map(review => (
+                  <div key={review.id} className="bg-gray-50 p-4 rounded-lg shadow-sm">
+                    <div className="flex items-center mb-2">
+                      <div className="font-semibold text-dark mr-2">{review.userName}</div>
+                      <div className="text-yellow-500">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</div>
+                    </div>
+                    <p className="text-dark-600 text-sm mb-2">{review.comment}</p>
+                    {review.artisanResponse && (
+                      <div className="mt-2 p-3 bg-blue-50 rounded-md border border-blue-200">
+                        <p className="font-semibold text-blue-800">Artisan Response:</p>
+                        <p className="text-blue-700 text-sm">{review.artisanResponse.response}</p>
+                      </div>
+                    )}
+                    <p className="text-gray-400 text-xs">{review.createdAt ? new Date(review.createdAt instanceof Date ? review.createdAt : review.createdAt.toDate()).toLocaleDateString() : ''}</p>
                   </div>
-                  <div className="text-dark-600">{review.comment}</div>
-                  <div className="text-xs text-dark-400 mt-1">{review.createdAt?.toDate ? review.createdAt.toDate().toLocaleDateString() : ''}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          {currentUser ? (
-            <form onSubmit={handleReviewSubmit} className="bg-white border rounded p-4 mb-6">
-              <h3 className="font-semibold mb-2">Add a Review</h3>
-              <div className="flex items-center mb-2">
-                <label className="mr-2">Rating:</label>
-                <select value={reviewRating} onChange={e => setReviewRating(Number(e.target.value))} className="border rounded px-2 py-1">
-                  {[5,4,3,2,1].map(r => <option key={r} value={r}>{r} Star{r > 1 ? 's' : ''}</option>)}
-                </select>
-              </div>
-              <textarea
-                value={reviewText}
-                onChange={e => setReviewText(e.target.value)}
-                className="w-full border rounded px-3 py-2 mb-2"
-                placeholder="Write your review..."
-                rows={3}
-                required
-              />
-              {reviewError && !reviewError.toLowerCase().includes('firestore') && (
-                <div className="text-red-500 mb-2">{reviewError}</div>
+                ))
               )}
-              <button type="submit" disabled={submittingReview} className="bg-primary text-white px-4 py-2 rounded hover:bg-primary-700">
-                {submittingReview ? 'Submitting...' : 'Submit Review'}
-              </button>
-            </form>
-          ) : (
-            <div className="bg-white border rounded p-4 mb-6 text-center text-dark-500">
-              Please <RouterLink to="/login" className="text-primary font-semibold hover:underline">login</RouterLink> to add a review
             </div>
           )}
+
+          {currentUser && (
+            <div className="mt-8">
+              <h3 className="text-xl font-bold mb-3">Write a Review</h3>
+              <form onSubmit={handleReviewSubmit} className="space-y-4">
+                <div>
+                  <label htmlFor="rating" className="block text-dark-700 text-sm font-bold mb-2">Rating:</label>
+                  <select
+                    id="rating"
+                    value={reviewRating}
+                    onChange={(e) => setReviewRating(parseInt(e.target.value))}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="5">5 Stars</option>
+                    <option value="4">4 Stars</option>
+                    <option value="3">3 Stars</option>
+                    <option value="2">2 Stars</option>
+                    <option value="1">1 Star</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="comment" className="block text-dark-700 text-sm font-bold mb-2">Comment:</label>
+                  <textarea
+                    id="comment"
+                    value={reviewText}
+                    onChange={(e) => setReviewText(e.target.value)}
+                    rows={4}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Share your thoughts on this product..."
+                  ></textarea>
+                </div>
+                {reviewError && (
+                  reviewError.includes('The query requires an index') ? null : (
+                    <p className="text-red-500 text-sm">{reviewError}</p>
+                  )
+                )}
+                <button
+                  type="submit"
+                  className="bg-primary text-white font-medium px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={submittingReview}
+                >
+                  {submittingReview ? 'Submitting...' : 'Submit Review'}
+                </button>
+              </form>
+            </div>
+          ) }
         </div>
-        {/* Related Products Section */}
         {relatedProducts.length > 0 && (
           <div className="border-t mt-8 pt-8 px-6 bg-gray-50 rounded-b-lg pb-12">
             <h2 className="text-2xl font-bold mb-4">Related Products</h2>
@@ -390,14 +419,14 @@ const ProductDetailPage: React.FC = () => {
               {relatedProducts.map(rp => (
                 <ProductCard
                   key={rp.id}
-                  product={rp}
+                  product={rp as Product & { id: string }}
                   artisanName={artisanName}
                   inCart={cartItems.some(item => item.id === rp.id)}
                   quantity={cartItems.find(item => item.id === rp.id)?.quantity || 1}
                   showQuantitySelector={false}
-                  onAddToCart={() => handleAddToCart(rp.id)}
-                  onIncrement={() => {}}
-                  onDecrement={() => {}}
+                  onAddToCart={handleAddToCart}
+                  onIncrement={incrementQuantity}
+                  onDecrement={decrementQuantity}
                 />
               ))}
             </div>

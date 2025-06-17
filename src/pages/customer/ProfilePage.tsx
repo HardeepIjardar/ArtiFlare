@@ -5,6 +5,7 @@ import { getUserData } from '../../services/firestore';
 import ChangePassword from '../../components/auth/ChangePassword';
 import type { UserData } from '../../services/firestore';
 import Modal from '../../components/common/Modal';
+import { getErrorMessage } from '../../utils/errorHandling';
 
 const ProfilePage: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -62,7 +63,7 @@ const ProfilePage: React.FC = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
-          <p className="text-red-700">Error: {error}</p>
+          <p className="text-red-700">Error: {getErrorMessage(error)}</p>
           <button 
             onClick={() => window.location.reload()}
             className="mt-2 text-primary hover:text-primary-700"

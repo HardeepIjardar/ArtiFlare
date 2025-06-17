@@ -8,6 +8,7 @@ import { PhoneAuth } from '../../components/auth';
 import { createUser } from '../../services/firestore';
 import { Timestamp } from 'firebase/firestore';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { getErrorMessage } from '../../utils/errorHandling';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -129,7 +130,7 @@ const LoginPage: React.FC = () => {
           {/* General form error */}
           {error && (
             <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md animate-fadeIn">
-              <p className="text-red-700 text-sm">{error}</p>
+              <p className="text-red-700 text-sm">{getErrorMessage(error)}</p>
             </div>
           )}
 

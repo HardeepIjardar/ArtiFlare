@@ -8,7 +8,7 @@ import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebas
 import { FaHeart, FaRegHeart } from 'react-icons/fa';
 
 interface ProductCardProps {
-  product: Product;
+  product: Product & { id: string };
   artisanName: string;
   inCart: boolean;
   quantity: number;
@@ -75,7 +75,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
   // Handler for card click (excluding cart controls)
   const handleCardClick = (e: React.MouseEvent) => {
     // Prevent navigation if clicking on a button or its children
-    if ((e.target as HTMLElement).closest('button')) return;
+    if ((e.target as HTMLElement).closest('button')) {
+      e.stopPropagation();
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
     navigate(`/products/${product.id}`);
   };
 
@@ -86,7 +91,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
       tabIndex={0}
       role="button"
       aria-label={`View details for ${product.name}`}
-      onKeyDown={e => { if (e.key === 'Enter') handleCardClick(e as any); }}
+      onKeyDown={e => { 
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          navigate(`/products/${product.id}`);
+        }
+      }}
     >
       {/* Heart Icon for Wishlist */}
       {currentUser && (
@@ -145,7 +155,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </div>
         <button
-          onClick={e => { e.stopPropagation(); navigate(`/products/${product.id}`); }}
+          onClick={e => { 
+            e.preventDefault();
+            e.stopPropagation(); 
+            navigate(`/products/${product.id}`);
+          }}
           className="w-full text-secondary font-medium py-1.5 rounded-lg hover:underline transition-colors text-sm focus:outline-none focus:ring-1 focus:ring-secondary"
         >
           View Details
