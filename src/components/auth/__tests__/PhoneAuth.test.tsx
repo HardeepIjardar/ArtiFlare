@@ -159,17 +159,16 @@ describe('PhoneAuth', () => {
     
     // Fill in verification code
     await waitFor(() => {
-      const codeInput = screen.getByLabelText(/Verification Code/i);
-      fireEvent.change(codeInput, { target: { value: '123456' } });
-      
-      const verifyButton = screen.getByRole('button', { name: /Verify Code/i });
-      fireEvent.click(verifyButton);
+      expect(screen.getByLabelText(/Verification Code/i)).toBeInTheDocument();
     });
+    const codeInput = screen.getByLabelText(/Verification Code/i);
+    fireEvent.change(codeInput, { target: { value: '123456' } });
     
-    await waitFor(() => {
-      expect(mockVerifyPhoneCode).toHaveBeenCalledWith(expect.any(Object), '123456');
-      expect(mockOnSuccess).toHaveBeenCalled();
-    });
+    const verifyButton = screen.getByRole('button', { name: /Verify Code/i });
+    fireEvent.click(verifyButton);
+    
+    await waitFor(() => expect(mockVerifyPhoneCode).toHaveBeenCalledWith(expect.any(Object), '123456'));
+    await waitFor(() => expect(mockOnSuccess).toHaveBeenCalled());
   });
 
   it('handles code verification error', async () => {
@@ -200,17 +199,16 @@ describe('PhoneAuth', () => {
     
     // Fill in verification code
     await waitFor(() => {
-      const codeInput = screen.getByLabelText(/Verification Code/i);
-      fireEvent.change(codeInput, { target: { value: '123456' } });
+      expect(screen.getByLabelText(/Verification Code/i)).toBeInTheDocument();
+    });
+    const codeInput = screen.getByLabelText(/Verification Code/i);
+    fireEvent.change(codeInput, { target: { value: '123456' } });
       
-      const verifyButton = screen.getByRole('button', { name: /Verify Code/i });
-      fireEvent.click(verifyButton);
-    });
+    const verifyButton = screen.getByRole('button', { name: /Verify Code/i });
+    fireEvent.click(verifyButton);
     
-    await waitFor(() => {
-      expect(screen.getByText('Invalid code')).toBeInTheDocument();
-      expect(mockOnError).toHaveBeenCalled();
-    });
+    await waitFor(() => expect(screen.getByText('Invalid code')).toBeInTheDocument());
+    await waitFor(() => expect(mockOnError).toHaveBeenCalled());
   });
 
   it('enables resend button after timer expires', async () => {

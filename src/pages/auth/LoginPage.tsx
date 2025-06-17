@@ -49,22 +49,14 @@ const LoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
+    setIsLoading(true);
 
     try {
-      const { user, error } = await login(email, password);
-      
-      if (error) {
-        setError(error);
-        return;
-      }
-
-      if (user) {
-        await handleRedirect(user);
-      }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during login');
+      await login(email, password);
+      navigate('/');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -73,29 +65,12 @@ const LoginPage: React.FC = () => {
   const handleGoogleLogin = async () => {
     setError(null);
     setIsLoading(true);
-    
+
     try {
-      const result = await googleLogin();
-      
-      if (result.error) {
-        setError(result.error);
-      } else if (result.user) {
-        // Check if user exists in Firestore
-        const userDoc = await getDoc(doc(db, 'users', result.user.uid));
-        if (!userDoc.exists()) {
-          // Create user document with default values
-          await createUser(result.user.uid, {
-            displayName: result.user.displayName || '',
-            email: result.user.email || '',
-            role: 'customer', // Default role, adjust if needed
-            createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now()
-          });
-        }
-        await handleRedirect(result.user);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to login with Google');
+      await googleLogin();
+      navigate('/');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

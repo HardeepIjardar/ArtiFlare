@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { createProduct } from '../../services/firestore';
+import { createProduct, ProductData } from '../../services/firestore';
 import { uploadMultipleImages } from '../../services/storage';
 
 const AddProduct: React.FC = () => {
-  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +48,8 @@ const AddProduct: React.FC = () => {
     
     try {
       // Create product in Firestore
-      const productData = {
+      const productData: ProductData = {
+        id: '', // This will be set by Firestore
         name: form.name,
         description: form.description,
         price: parseFloat(form.price),
@@ -64,15 +63,16 @@ const AddProduct: React.FC = () => {
         materials: form.materials.split(',').map(material => material.trim()).filter(material => material),
         occasion: form.occasion || undefined,
         images: form.images,
-        attributes: {
-          // Additional product attributes
-        }
+        currency: 'USD',
+        attributes: {},
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
       
       const result = await createProduct(productData);
       
       if (result.error) {
-        setError(result.error);
+        setError(result.error.message);
       } else {
         setSuccess(true);
         // Clear form
@@ -339,7 +339,7 @@ const AddProduct: React.FC = () => {
               <div key={index} className="relative group">
                 <img
                   src={image}
-                  alt={`Product image ${index + 1}`}
+                  alt={`Product ${index + 1}`}
                   className="w-full h-32 object-cover rounded-md"
                 />
                 <button

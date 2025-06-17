@@ -223,7 +223,7 @@ async function setupFirestore() {
       console.log(`Creating collection: ${collectionName}`);
       
       // Create a sample document to initialize the collection
-      const sampleDoc = Object.entries(schema).reduce((acc, [key, type]) => {
+      const sampleDoc = Object.entries(schema).reduce((acc: Record<string, any>, [key, type]) => {
         switch (type) {
           case 'string':
             acc[key] = '';
@@ -242,14 +242,14 @@ async function setupFirestore() {
             break;
           default:
             if (typeof type === 'object') {
-              acc[key] = Object.entries(type).reduce((obj, [k, v]) => {
+              acc[key] = Object.entries(type).reduce((obj: Record<string, any>, [k, v]) => {
                 obj[k] = v === 'array' ? [] : v === 'number' ? 0 : '';
                 return obj;
               }, {});
             }
         }
         return acc;
-      }, {});
+      }, {} as Record<string, any>);
 
       // Add the sample document
       await db.collection(collectionName).doc('_schema').set(sampleDoc);
@@ -259,8 +259,8 @@ async function setupFirestore() {
     // Create indexes
     for (const index of indexes) {
       console.log(`Creating index for ${index.collection}...`);
-      await db.collection(index.collection).createIndex(index.fields);
-      console.log(`Created index for ${index.collection}`);
+      // await db.collection(index.collection).createIndex(index.fields); // This is a Firebase CLI/console operation, not client-side
+      console.log(`Index creation for ${index.collection} skipped (manual operation required).`);
     }
 
     console.log('Firestore setup completed successfully!');

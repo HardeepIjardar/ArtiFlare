@@ -73,11 +73,9 @@ describe('ChangePassword', () => {
     // Submit the form
     fireEvent.click(screen.getByRole('button', { name: /Update Password/i }));
     
-    await waitFor(() => {
-      expect(mockUpdatePassword).toHaveBeenCalledWith('newpass123');
-      expect(mockOnSuccess).toHaveBeenCalled();
-      expect(mockOnError).not.toHaveBeenCalled();
-    });
+    await waitFor(() => expect(mockUpdatePassword).toHaveBeenCalledWith('newpass123'));
+    await waitFor(() => expect(mockOnSuccess).toHaveBeenCalled());
+    await waitFor(() => expect(mockOnError).not.toHaveBeenCalled());
   });
 
   it('calls onError when password update fails', async () => {
@@ -94,10 +92,8 @@ describe('ChangePassword', () => {
     // Submit the form
     fireEvent.click(screen.getByRole('button', { name: /Update Password/i }));
     
-    await waitFor(() => {
-      expect(mockOnError).toHaveBeenCalledWith(errorMessage);
-      expect(mockOnSuccess).not.toHaveBeenCalled();
-    });
+    await waitFor(() => expect(mockOnError).toHaveBeenCalledWith(errorMessage));
+    await waitFor(() => expect(mockOnSuccess).not.toHaveBeenCalled());
   });
 
   it('toggles password visibility when show/hide buttons are clicked', () => {

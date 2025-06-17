@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { RecaptchaVerifier, User } from 'firebase/auth';
+import { RecaptchaVerifier } from 'firebase/auth';
 import { auth } from '../../services/firebase';
 import { PhoneAuthProps } from '../../types/auth';
 
@@ -35,8 +35,6 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
   const [verificationCode, setVerificationCode] = useState('');
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isDetectingLocation, setIsDetectingLocation] = useState(true);
   const [showRecaptcha, setShowRecaptcha] = useState(false);
   const [recaptchaSolved, setRecaptchaSolved] = useState(false);
   const [resendAvailable, setResendAvailable] = useState(false);
@@ -44,7 +42,6 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
-  const [codeStep, setCodeStep] = useState(false);
 
   // Initialize reCAPTCHA when component mounts or when showRecaptcha changes
   useEffect(() => {
@@ -64,11 +61,9 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
             size: 'normal',
             callback: () => {
               setRecaptchaSolved(true);
-              setError(null);
             },
             'expired-callback': () => {
               setRecaptchaSolved(false);
-              setError('reCAPTCHA expired. Please try again.');
               if (recaptchaVerifierRef.current) {
                 recaptchaVerifierRef.current.clear();
                 recaptchaVerifierRef.current = null;
@@ -80,7 +75,6 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
         // Render the reCAPTCHA widget
         recaptchaVerifierRef.current.render().catch((err) => {
           console.error('reCAPTCHA render error:', err);
-          setError('Failed to initialize reCAPTCHA. Please refresh the page.');
           if (recaptchaVerifierRef.current) {
             recaptchaVerifierRef.current.clear();
             recaptchaVerifierRef.current = null;
@@ -88,7 +82,6 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
         });
       } catch (err) {
         console.error('reCAPTCHA initialization error:', err);
-        setError('Failed to initialize reCAPTCHA. Please refresh the page.');
         if (recaptchaVerifierRef.current) {
           recaptchaVerifierRef.current.clear();
           recaptchaVerifierRef.current = null;
@@ -142,7 +135,7 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
           );
         }
       } finally {
-        setIsDetectingLocation(false);
+        // setIsDetectingLocation(false);
       }
     };
 
@@ -165,16 +158,14 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
 
   const handlePhoneFocus = () => {
     setShowRecaptcha(true);
-    setError(null);
   };
 
   const handleSendCode = async (e: React.FormEvent, isResend = false) => {
     e.preventDefault();
-    setError(null);
 
     // Validate phone number
     if (!validatePhoneNumber(phoneNumber)) {
-      setError('Please enter a valid 10-digit phone number');
+      onError?.('Please enter a valid 10-digit phone number');
       return;
     }
 
@@ -182,7 +173,6 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
     if (!showRecaptcha) {
       setShowRecaptcha(true);
       setResendAvailable(false);
-      setCodeStep(true);
       return;
     }
 
@@ -195,12 +185,10 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
       setShowRecaptcha(true);
       setRecaptchaSolved(false);
       setResendAvailable(false);
-      setCodeStep(true);
       return;
     }
 
     setIsLoading(true);
-    setCodeStep(true);
 
     try {
       if (!recaptchaVerifierRef.current) {
@@ -257,10 +245,9 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
           recaptchaVerifierRef.current.clear();
           recaptchaVerifierRef.current = null;
         }
-        setError('reCAPTCHA verification failed. Please try again.');
+        onError?.(message || 'Failed to send verification code');
         return;
       }
-      setError(message || 'Failed to send verification code');
       onError?.(message || 'Failed to send verification code');
     } finally {
       setIsLoading(false);
@@ -278,7 +265,6 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
 
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setIsLoading(true);
 
     try {
@@ -289,14 +275,12 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
       const result = await verifyPhoneCode(confirmationResult, verificationCode);
       
       if (result.error) {
-        setError(result.error);
         onError?.(result.error);
       } else if (result.user) {
         onSuccess?.(result.user);
       }
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to verify code';
-      setError(errorMessage);
       onError?.(errorMessage);
     } finally {
       setIsLoading(false);

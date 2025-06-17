@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
-import { getProducts, getUserData, Product } from '../../services/firestore';
+import { getProducts, getUserData } from '../../services/firestore';
+import { Product } from '../../types/product';
 import ProductCard from '../../components/ProductCard';
 import { getErrorMessage } from '../../utils/errorHandling';
 import { db } from '../../services/firebase';
+import { Timestamp } from 'firebase/firestore';
 
 const ProductsPage: React.FC = () => {
   const { addToCart, updateQuantity: updateCartQuantity, cartItems, removeFromCart } = useCart();
@@ -17,7 +19,7 @@ const ProductsPage: React.FC = () => {
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedOccasion, setSelectedOccasion] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+  const [priceRange, setPriceRange] = useState({ min: 0, max: Infinity });
   const [sortBy, setSortBy] = useState('');
   const filterRef = useRef<HTMLDivElement>(null);
   const filterBtnRef = useRef<HTMLButtonElement>(null);
@@ -25,30 +27,26 @@ const ProductsPage: React.FC = () => {
   useEffect(() => {
     const fetchProductsAndArtisans = async () => {
       try {
-        const { products, error } = await getProducts();
-        if (error) {
-          setError(getErrorMessage(error));
-          // Debug log
-          console.error('ProductsPage error:', error);
-          // Log Firebase project ID
+        const { products: fetchedProducts, error: productsError } = await getProducts();
+        if (productsError) {
+          setError(getErrorMessage(productsError));
+          console.error('ProductsPage error:', productsError);
           // @ts-ignore
           console.log('Firebase project ID:', db.app.options.projectId);
         } else {
-          setProducts(products || []);
+          setProducts(fetchedProducts);
           // Initialize quantities and showQuantitySelector
           const initialQuantities: { [key: string]: number } = {};
           const initialShowQuantitySelector: { [key: string]: boolean } = {};
-          products.forEach(product => {
-            if (product.id) {
-              initialQuantities[product.id] = 1;
-              initialShowQuantitySelector[product.id] = false;
-            }
+          fetchedProducts.forEach(product => {
+            initialQuantities[product.id] = 1;
+            initialShowQuantitySelector[product.id] = false;
           });
           setQuantities(initialQuantities);
           setShowQuantitySelector(initialShowQuantitySelector);
 
           // Fetch artisan names
-          const uniqueArtisanIds = Array.from(new Set(products.map(p => p.artisanId)));
+          const uniqueArtisanIds = Array.from(new Set(fetchedProducts.map(p => p.artisanId)));
           const namesMap: { [key: string]: string } = {};
           await Promise.all(uniqueArtisanIds.map(async (artisanId) => {
             try {
@@ -56,17 +54,18 @@ const ProductsPage: React.FC = () => {
               if (result.userData) {
                 const name = result.userData.companyName || result.userData.displayName || 'Artisan';
                 namesMap[artisanId] = name;
+              } else if (result.error) {
+                console.error(`Error fetching artisan data for ${artisanId}:`, result.error);
               }
-            } catch (err) {
+            } catch (err: unknown) {
               console.error(`Error fetching artisan data for ${artisanId}:`, err);
               namesMap[artisanId] = 'Artisan';
             }
           }));
           setArtisanNames(namesMap);
         }
-      } catch (err) {
+      } catch (err: unknown) {
         setError(getErrorMessage(err));
-        // Debug log
         console.error('ProductsPage catch error:', err);
         // @ts-ignore
         console.log('Firebase project ID:', db.app.options.projectId);
@@ -95,17 +94,17 @@ const ProductsPage: React.FC = () => {
 
   const handleAddToCart = (productId: string) => {
     const product = products.find(p => p.id === productId);
-    if (product && product.id) {
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      quantity: 1,
-      artisan: product.artisanId,
-        image: product.images[0],
-        currency: product.currency
-    });
-    setShowQuantitySelector(prev => ({ ...prev, [productId]: true }));
+    if (product) {
+      addToCart({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        quantity: 1,
+        artisan: product.artisanId,
+        image: product.images && product.images.length > 0 ? product.images[0] : '',
+        currency: product.currency || 'INR'
+      });
+      setShowQuantitySelector(prev => ({ ...prev, [productId]: true }));
     }
   };
 
@@ -116,9 +115,20 @@ const ProductsPage: React.FC = () => {
   };
 
   const handleDecrement = (productId: string) => {
-    const newQuantity = Math.max(1, (quantities[productId] || 1) - 1);
+    const currentQuantity = quantities[productId] || 1;
+    if (currentQuantity <= 1) {
+      removeFromCart(productId);
+      setShowQuantitySelector(prev => ({ ...prev, [productId]: false }));
+      setQuantities(prev => {
+        const newQuantities = { ...prev };
+        delete newQuantities[productId];
+        return newQuantities;
+      });
+    } else {
+      const newQuantity = currentQuantity - 1;
       setQuantities(prev => ({ ...prev, [productId]: newQuantity }));
       updateCartQuantity(productId, newQuantity);
+    }
   };
 
   // Filter products by all selected filters
@@ -126,13 +136,17 @@ const ProductsPage: React.FC = () => {
     .filter(product =>
       (!selectedOccasion || product.occasion?.toLowerCase() === selectedOccasion.toLowerCase()) &&
       (!selectedCategory || product.category?.toLowerCase() === selectedCategory.toLowerCase()) &&
-      (!priceRange.min || product.price >= parseFloat(priceRange.min)) &&
-      (!priceRange.max || product.price <= parseFloat(priceRange.max))
+      (!priceRange.min || product.price >= priceRange.min) &&
+      (priceRange.max === Infinity || product.price <= priceRange.max)
     )
     .sort((a, b) => {
       if (sortBy === 'price-asc') return a.price - b.price;
       if (sortBy === 'price-desc') return b.price - a.price;
-      if (sortBy === 'newest') return (b.createdAt as any) - (a.createdAt as any);
+      if (sortBy === 'newest') {
+        const aDate = a.createdAt instanceof Timestamp ? a.createdAt.toDate() : (a.createdAt || new Date(0));
+        const bDate = b.createdAt instanceof Timestamp ? b.createdAt.toDate() : (b.createdAt || new Date(0));
+        return bDate.getTime() - aDate.getTime();
+      }
       return 0;
     });
 
@@ -231,8 +245,8 @@ const ProductsPage: React.FC = () => {
                       id="min-price"
                       type="number"
                       min="0"
-                      value={priceRange.min}
-                      onChange={e => setPriceRange(pr => ({ ...pr, min: e.target.value }))}
+                      value={priceRange.min === 0 ? '' : priceRange.min}
+                      onChange={e => setPriceRange(pr => ({ ...pr, min: parseFloat(e.target.value) || 0 }))}
                       className="block w-full pl-2 pr-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                     />
                   </div>
@@ -243,8 +257,8 @@ const ProductsPage: React.FC = () => {
                       id="max-price"
                       type="number"
                       min="0"
-                      value={priceRange.max}
-                      onChange={e => setPriceRange(pr => ({ ...pr, max: e.target.value }))}
+                      value={priceRange.max === Infinity ? '' : priceRange.max}
+                      onChange={e => setPriceRange(pr => ({ ...pr, max: parseFloat(e.target.value) || Infinity }))}
                       className="block w-full pl-2 pr-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                     />
                   </div>
@@ -270,7 +284,7 @@ const ProductsPage: React.FC = () => {
                   onClick={() => {
                     setSelectedOccasion('');
                     setSelectedCategory('');
-                    setPriceRange({ min: '', max: '' });
+                    setPriceRange({ min: 0, max: Infinity });
                     setSortBy('');
                   }}
                 >
@@ -280,23 +294,25 @@ const ProductsPage: React.FC = () => {
             )}
           </div>
         </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredProducts.map(product => (
-          product.id && (
-          <ProductCard
-            key={product.id}
-            product={product}
-            artisanName={artisanNames[product.artisanId] || 'Artisan'}
-            inCart={cartItems.some(item => item.id === product.id)}
-            quantity={quantities[product.id] || 1}
-              showQuantitySelector={showQuantitySelector[product.id] || false}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredProducts.map(product => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              artisanName={artisanNames[product.artisanId] || 'Artisan'}
+              inCart={cartItems.some(item => item.id === product.id)}
+              quantity={quantities[product.id] || 1}
+              showQuantitySelector={!!showQuantitySelector[product.id]}
               onAddToCart={handleAddToCart}
               onIncrement={handleIncrement}
               onDecrement={handleDecrement}
-          />
-          )
-        ))}
+              onRemoveFromCart={() => {}}
+              onUpdateQuantity={() => {}}
+              onToggleWishlist={() => {}}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

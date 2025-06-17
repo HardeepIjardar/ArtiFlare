@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getUserOrders } from '../../services/firestore';
 import type { Order } from '../../services/firestore';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import { Timestamp } from 'firebase/firestore';
 
 const OrdersPage: React.FC = () => {
   const { currentUser, isLoading: authLoading } = useAuth();
@@ -20,7 +21,7 @@ const OrdersPage: React.FC = () => {
       try {
         const { orders, error } = await getUserOrders(currentUser.uid);
         if (error) {
-          setError(error);
+          setError(error && typeof error === 'object' && 'message' in error ? error.message : error);
         } else {
           setOrders(orders);
         }
@@ -56,7 +57,7 @@ const OrdersPage: React.FC = () => {
                 <div>
                   <h2 className="text-lg font-bold text-dark">Order #{order.id}</h2>
                   <p className="text-dark-500 text-sm">
-                    Placed on {order.createdAt?.toDate().toLocaleDateString()}
+                    Placed on {order.createdAt instanceof Timestamp ? order.createdAt.toDate().toLocaleDateString() : order.createdAt?.toLocaleDateString()}
                   </p>
                 </div>
                 <div className="text-right">
@@ -75,12 +76,12 @@ const OrdersPage: React.FC = () => {
                   </span>
                   {order.status === 'delivered' && order.updatedAt && (
                     <p className="text-dark-500 text-sm mt-1">
-                      Delivered on {order.updatedAt.toDate().toLocaleDateString()}
+                      Delivered on {order.updatedAt instanceof Timestamp ? order.updatedAt.toDate().toLocaleDateString() : order.updatedAt.toLocaleDateString()}
                     </p>
                   )}
                   {order.status === 'processing' && order.updatedAt && (
                     <p className="text-dark-500 text-sm mt-1">
-                      Last updated: {order.updatedAt.toDate().toLocaleDateString()}
+                      Last updated: {order.updatedAt instanceof Timestamp ? order.updatedAt.toDate().toLocaleDateString() : order.updatedAt.toLocaleDateString()}
                     </p>
                   )}
                 </div>

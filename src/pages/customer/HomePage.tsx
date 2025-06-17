@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { FaBirthdayCake, FaWineGlassAlt, FaHeart, FaSeedling } from 'react-icons/fa';
-import { getProducts, Product } from '../../services/firestore';
-import { getUserData } from '../../services/firestore';
+import { getProducts, getUserData } from '../../services/firestore';
+import { Product } from '../../types/product';
 import { useCart } from '../../contexts/CartContext';
 import ProductCard from '../../components/ProductCard';
 import { SearchContext } from '../../layouts/MainLayout';
+import { getErrorMessage } from '../../utils/errorHandling';
+import { Timestamp } from 'firebase/firestore';
 
 // Hero Section with Search bar
 const HeroSection = () => {
@@ -165,34 +167,36 @@ const HomePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [artisanNames, setArtisanNames] = useState<{ [key: string]: string }>({});
   const [filterOpen, setFilterOpen] = useState(false);
-  const [selectedOccasion, setSelectedOccasion] = useState('');
+  const [selectedOccasion, setSelectedOccasion] = useState<string>('');
   const filterRef = useRef<HTMLDivElement>(null);
   const filterBtnRef = useRef<HTMLButtonElement>(null);
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
-  const [sortBy, setSortBy] = useState('');
+  const [sortBy, setSortBy] = useState<string>('');
   const occasionsSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         console.log('Fetching products...');
-        const { products, error } = await getProducts();
-        if (error) {
-          console.error('Error from getProducts:', error);
-          setError(error);
+        const { products: fetchedProducts, error: productsError } = await getProducts();
+        if (productsError) {
+          console.error('Error from getProducts:', productsError);
+          setError(getErrorMessage(productsError));
         } else {
-          console.log('Products fetched successfully:', products.length);
-          setProducts(products);
+          console.log('Products fetched successfully:', fetchedProducts.length);
+          setProducts(fetchedProducts);
           // Fetch artisan names
-          const uniqueArtisanIds = Array.from(new Set(products.map(p => p.artisanId)));
+          const uniqueArtisanIds = Array.from(new Set(fetchedProducts.map(p => p.artisanId)));
           console.log('Fetching artisan names for:', uniqueArtisanIds);
           const namesMap: { [key: string]: string } = {};
           await Promise.all(uniqueArtisanIds.map(async (artisanId) => {
             try {
-              const userData = await getUserData(artisanId);
-              if (userData) {
-                namesMap[artisanId] = userData.companyName || userData.displayName || 'Artisan';
+              const result = await getUserData(artisanId);
+              if (result.userData) {
+                namesMap[artisanId] = result.userData.companyName || result.userData.displayName || 'Artisan';
+              } else if (result.error) {
+                console.error(`Error fetching artisan data for ${artisanId}:`, result.error);
               }
             } catch (err) {
               console.error(`Error fetching artisan data for ${artisanId}:`, err);
@@ -203,7 +207,7 @@ const HomePage: React.FC = () => {
         }
       } catch (err) {
         console.error('Error in fetchProducts:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch products');
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }
@@ -238,7 +242,11 @@ const HomePage: React.FC = () => {
     .sort((a, b) => {
       if (sortBy === 'price-asc') return a.price - b.price;
       if (sortBy === 'price-desc') return b.price - a.price;
-      if (sortBy === 'newest') return (b.createdAt as any) - (a.createdAt as any);
+      if (sortBy === 'newest') {
+        const aDate = a.createdAt instanceof Timestamp ? a.createdAt.toDate() : (a.createdAt || new Date(0));
+        const bDate = b.createdAt instanceof Timestamp ? b.createdAt.toDate() : (b.createdAt || new Date(0));
+        return bDate.getTime() - aDate.getTime();
+      }
       return 0;
     });
 
@@ -251,21 +259,24 @@ const HomePage: React.FC = () => {
       price: product.price,
       quantity: 1,
       artisan: product.artisanId,
-      image: product.images[0]
+      image: product.images ? product.images[0] : '',
+      currency: product.currency || 'INR',
     });
+    
     setShowQuantitySelector(prev => ({ ...prev, [productId]: true }));
     setQuantities(prev => ({ ...prev, [productId]: 1 }));
   };
 
   const incrementQuantity = (productId: string) => {
-    const newQuantity = (quantities[productId] || 1) + 1;
-    setQuantities(prev => ({ ...prev, [productId]: newQuantity }));
-    updateCartQuantity(productId, newQuantity);
+    updateCartQuantity(productId, (quantities[productId] || 1) + 1);
+    setQuantities(prev => ({ ...prev, [productId]: (prev[productId] || 1) + 1 }));
   };
 
   const decrementQuantity = (productId: string) => {
-    const currentQuantity = quantities[productId] || 1;
-    if (currentQuantity <= 1) {
+    if (quantities[productId] && quantities[productId] > 1) {
+      updateCartQuantity(productId, quantities[productId] - 1);
+      setQuantities(prev => ({ ...prev, [productId]: prev[productId] - 1 }));
+    } else {
       removeFromCart(productId);
       setShowQuantitySelector(prev => ({ ...prev, [productId]: false }));
       setQuantities(prev => {
@@ -273,28 +284,45 @@ const HomePage: React.FC = () => {
         delete newQuantities[productId];
         return newQuantities;
       });
-    } else {
-      const newQuantity = currentQuantity - 1;
-      setQuantities(prev => ({ ...prev, [productId]: newQuantity }));
-      updateCartQuantity(productId, newQuantity);
     }
   };
 
+  const handleScrollToOccasions = () => {
+    occasionsSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleResetFilters = () => {
+    setSelectedOccasion('');
+    setSelectedCategory('');
+    setPriceRange({ min: '', max: '' });
+    setSortBy('');
+    setFilterOpen(false);
+  };
+
   return (
-    <div>
+    <div className="bg-gray-50 min-h-screen">
       <HeroSection />
+      
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+          <p className="text-red-700 text-sm">Error: {error}</p>
+        </div>
+      )}
+
       <OccasionsSection ref={occasionsSectionRef} />
+
       <SOSGiftsSection />
-      {/* All Products Section */}
+
       <div className="px-4 sm:px-6 lg:px-8 mt-12">
         <div className="max-w-7xl mx-auto">
+          {/* Combined Heading and Filter Button */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-dark">All Products</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-dark">New Arrivals</h2>
+            {/* Product Filters - Button and Panel */}
             <div className="relative">
               <button
-                ref={filterBtnRef}
-                className="bg-primary text-white px-4 py-2 rounded hover:bg-primary-700 focus:outline-none"
-                onClick={() => setFilterOpen(v => !v)}
+                onClick={() => setFilterOpen(!filterOpen)}
+                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 focus:outline-none"
               >
                 Filter
               </button>
@@ -309,10 +337,9 @@ const HomePage: React.FC = () => {
                   >
                     ×
                   </button>
+
                   {/* Occasion Filter */}
-                  <label htmlFor="occasion" className="block text-sm font-medium text-gray-700 mb-2">
-                    Occasion
-                  </label>
+                  <label htmlFor="occasion" className="block text-sm font-medium text-gray-700 mb-2">Occasion</label>
                   <select
                     id="occasion"
                     value={selectedOccasion}
@@ -327,10 +354,9 @@ const HomePage: React.FC = () => {
                     <option value="valentines">Valentine's Day</option>
                     <option value="housewarming">Housewarming</option>
                   </select>
+
                   {/* Category Filter */}
-                  <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
-                    Category
-                  </label>
+                  <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                   <select
                     id="category"
                     value={selectedCategory}
@@ -342,6 +368,7 @@ const HomePage: React.FC = () => {
                       <option key={category} value={category}>{category}</option>
                     ))}
                   </select>
+
                   {/* Price Range Filter */}
                   <div className="flex items-center mb-4 gap-2">
                     <div className="flex-1">
@@ -352,7 +379,7 @@ const HomePage: React.FC = () => {
                         min="0"
                         value={priceRange.min}
                         onChange={e => setPriceRange(pr => ({ ...pr, min: e.target.value }))}
-                        className="block w-full pl-2 pr-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                        className="block w-full pl-2 pr-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                       />
                     </div>
                     <span className="mx-2 text-gray-500">-</span>
@@ -364,34 +391,29 @@ const HomePage: React.FC = () => {
                         min="0"
                         value={priceRange.max}
                         onChange={e => setPriceRange(pr => ({ ...pr, max: e.target.value }))}
-                        className="block w-full pl-2 pr-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                        className="block w-full pl-2 pr-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                       />
                     </div>
                   </div>
+
                   {/* Sort By Filter */}
-                  <label htmlFor="sort-by" className="block text-sm font-medium text-gray-700 mb-2">
-                    Sort By
-                  </label>
+                  <label htmlFor="sort-by" className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
                   <select
                     id="sort-by"
                     value={sortBy}
                     onChange={e => setSortBy(e.target.value)}
-                    className="block w-full mb-2 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+                    className="block w-full mb-4 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
                   >
                     <option value="">Default</option>
                     <option value="price-asc">Price: Low to High</option>
                     <option value="price-desc">Price: High to Low</option>
-                    <option value="newest">Newest</option>
+                    <option value="newest">Newest Arrivals</option>
                   </select>
+
                   {/* Reset Button */}
                   <button
-                    className="mt-4 w-full bg-gray-200 text-dark py-2 rounded hover:bg-gray-300 transition-colors duration-150"
-                    onClick={() => {
-                      setSelectedOccasion('');
-                      setSelectedCategory('');
-                      setPriceRange({ min: '', max: '' });
-                      setSortBy('');
-                    }}
+                    onClick={handleResetFilters}
+                    className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 focus:outline-none mt-4"
                   >
                     Reset
                   </button>
@@ -399,13 +421,14 @@ const HomePage: React.FC = () => {
               )}
             </div>
           </div>
+
           {loading ? (
-            <div className="text-center">Loading products...</div>
-          ) : error ? (
-            <div className="text-center text-red-500">{error}</div>
-          ) : (
+            <div className="flex justify-center items-center h-40">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          ) : filteredProducts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredProducts.map(product => (
+              {filteredProducts.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -416,11 +439,29 @@ const HomePage: React.FC = () => {
                   onAddToCart={handleAddToCartClick}
                   onIncrement={incrementQuantity}
                   onDecrement={decrementQuantity}
+                  onRemoveFromCart={() => {}}
+                  onUpdateQuantity={() => {}}
+                  onToggleWishlist={() => {}}
                 />
               ))}
             </div>
+          ) : (
+            <div className="text-center py-10">
+              <p className="text-dark-500">No products found matching your criteria.</p>
+            </div>
           )}
         </div>
+      </div>
+
+      <div className="mt-12 py-8 bg-gray-100 text-center">
+        <h2 className="text-2xl font-bold text-dark mb-4">Ready to explore handcrafted treasures?</h2>
+        <p className="text-lg text-dark-600 mb-6">Discover unique items made with passion and skill.</p>
+        <Link 
+          to="/products" 
+          className="inline-block bg-primary hover:bg-primary-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition-colors"
+        >
+          Shop All Products
+        </Link>
       </div>
     </div>
   );

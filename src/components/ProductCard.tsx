@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Product } from '../services/firestore';
+import { Product } from '../types/product';
 import { useAuth } from '../contexts/AuthContext';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { db } from '../services/firebase';
@@ -8,12 +8,15 @@ import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebas
 import { FaHeart, FaRegHeart } from 'react-icons/fa';
 
 interface ProductCardProps {
-  product: Product & { id: string };
+  product: Product;
   artisanName: string;
   inCart: boolean;
   quantity: number;
   showQuantitySelector: boolean;
   onAddToCart: (productId: string) => void;
+  onRemoveFromCart: (productId: string) => void;
+  onUpdateQuantity: (productId: string, quantity: number) => void;
+  onToggleWishlist: (productId: string) => void;
   onIncrement: (productId: string) => void;
   onDecrement: (productId: string) => void;
 }
@@ -25,6 +28,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
   quantity,
   showQuantitySelector,
   onAddToCart,
+  onRemoveFromCart,
+  onUpdateQuantity,
+  onToggleWishlist,
   onIncrement,
   onDecrement
 }) => {

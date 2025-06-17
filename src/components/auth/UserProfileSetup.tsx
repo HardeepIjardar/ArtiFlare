@@ -2,50 +2,45 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { createUser } from '../../services/firestore';
+import { getErrorMessage } from '../../utils/errorHandling';
 
 interface UserProfileSetupProps {
   userType: 'customer' | 'artisan';
 }
 
 const UserProfileSetup: React.FC<UserProfileSetupProps> = ({ userType }) => {
-  const navigate = useNavigate();
-  const { currentUser } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
   const [form, setForm] = useState({
-    displayName: currentUser?.displayName || '',
+    displayName: '',
     phoneNumber: '',
     street: '',
     city: '',
     state: '',
     zipCode: '',
     country: '',
-    bio: '',
-    companyName: ''
+    companyName: '',
+    bio: ''
   });
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setForm(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setError(null);
+    setIsLoading(true);
+
     if (!currentUser) {
       setError('No user found. Please log in again.');
       return;
     }
-    
-    setIsLoading(true);
-    setError(null);
-    
+
     try {
-      // Create user profile in Firestore
       const userData = {
         displayName: form.displayName,
         email: currentUser.email || '',
@@ -71,13 +66,13 @@ const UserProfileSetup: React.FC<UserProfileSetupProps> = ({ userType }) => {
       const result = await createUser(currentUser.uid, userData);
       
       if (result.error) {
-        setError(result.error);
+        setError(result.error instanceof Error ? result.error.message : String(result.error));
       } else {
         // Redirect based on user type
         navigate(userType === 'artisan' ? '/artisan' : '/');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to create user profile');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

@@ -29,7 +29,7 @@ export type UserRole = 'customer' | 'artisan' | 'admin';
 
 // Type definitions
 export interface ProductData {
-  id?: string;
+  id: string;
   name: string;
   description: string;
   price: number;
@@ -286,9 +286,24 @@ const validateData = <T>(schema: z.ZodSchema<T>, data: unknown): T => {
 };
 
 export const removeUndefined = (obj: any): any => {
-  return Object.fromEntries(
-    Object.entries(obj).filter(([, value]) => value !== undefined)
-  );
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => removeUndefined(item));
+  }
+
+  const newObj: { [key: string]: any } = {};
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const value = obj[key];
+      if (value !== undefined) {
+        newObj[key] = removeUndefined(value);
+      }
+    }
+  }
+  return newObj;
 };
 
 export const batchCreateProducts = async (products: Omit<ProductData, 'id' | 'createdAt' | 'updatedAt'>[]) => {
@@ -557,7 +572,7 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'u
   try {
     const newOrderRef = doc(collection(db, 'orders'));
     await setDoc(newOrderRef, {
-      ...orderData,
+      ...removeUndefined(orderData),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -959,7 +974,7 @@ export const placeOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'up
   try {
     const newOrderRef = doc(collection(db, 'orders'));
     await setDoc(newOrderRef, {
-      ...orderData,
+      ...removeUndefined(orderData),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -1039,14 +1054,16 @@ export const processOrder = async (
 
       // 2. Prepare order data with server timestamps
       const orderToCreate = {
-        ...orderData,
+        ...removeUndefined(orderData),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
-      // 3. Check and update product inventory for each item in the order
+      // First, perform all reads and validations
+      const productSnapshots = new Map<string, any>();
       for (const item of cartItems) {
         const productRef = doc(db, 'products', item.productId);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const productSnap = await transaction.get(productRef);
 
         if (!productSnap.exists()) {
@@ -1059,6 +1076,13 @@ export const processOrder = async (
         if (currentInventory < quantityToOrder) {
           throw new FirestoreError(`Not enough inventory for product ${item.productName}. Available: ${currentInventory}, Requested: ${quantityToOrder}`, 'insufficient-inventory');
         }
+        productSnapshots.set(item.productId, { snap: productSnap, currentInventory, quantityToOrder });
+      }
+
+      // Now, perform all writes
+      for (const item of cartItems) {
+        const { snap: productSnap, currentInventory, quantityToOrder } = productSnapshots.get(item.productId);
+        const productRef = doc(db, 'products', item.productId);
 
         // Decrement inventory
         transaction.update(productRef, {
@@ -1067,7 +1091,7 @@ export const processOrder = async (
         });
       }
 
-      // 4. Set the new order document
+      // Set the new order document
       transaction.set(newOrderRef, orderToCreate);
 
       return newOrderRef.id;

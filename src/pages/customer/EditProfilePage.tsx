@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { updateUserProfile, getUserData } from '../../services/firestore';
 import { v4 as uuidv4 } from 'uuid';
+import { getErrorMessage } from '../../utils/errorHandling';
 
 const EditProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ const EditProfilePage: React.FC = () => {
     zipCode: string;
     country: string;
     isDefault: boolean;
-    label?: string;
+    label?: string | null;
   }>>([]);
 
   const [newAddress, setNewAddress] = useState({
@@ -47,16 +48,18 @@ const EditProfilePage: React.FC = () => {
       }
 
       try {
-        const userData = await getUserData(currentUser.uid);
-        if (userData) {
+        const result = await getUserData(currentUser.uid);
+        if (result.userData) {
           setForm({
-            displayName: userData.displayName || '',
-            phoneNumber: userData.phoneNumber || '',
+            displayName: result.userData.displayName || '',
+            phoneNumber: result.userData.phoneNumber || '',
           });
-          setAddresses(userData.addresses || []);
+          setAddresses(result.userData.addresses || []);
+        } else if (result.error) {
+          setError(getErrorMessage(result.error));
         }
-      } catch (err: any) {
-        setError(err.message || 'Failed to fetch user data');
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
       } finally {
         setIsFetching(false);
       }
@@ -132,12 +135,12 @@ const EditProfilePage: React.FC = () => {
       const result = await updateUserProfile(currentUser.uid, userData);
       
       if (result.error) {
-        setError(result.error);
+        setError(getErrorMessage(result.error));
       } else {
         navigate('/profile');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to update user profile');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

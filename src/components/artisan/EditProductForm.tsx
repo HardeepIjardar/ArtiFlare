@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { updateProduct, ProductData } from '../../services/firestore';
 import { uploadMultipleImages, deleteImage } from '../../services/storage';
@@ -101,12 +101,12 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
       const result = await updateProduct(product.id, productData);
       
       if (!result.success) {
-        setError(result.error || 'Failed to update product');
+        setError(result.error?.message || 'Failed to update product');
       } else {
         onSuccess();
       }
-    } catch (err) {
-      setError('Failed to update product');
+    } catch (err: any) {
+      setError(err.message || 'Failed to update product');
     } finally {
       setLoading(false);
     }
@@ -317,7 +317,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
                 <div key={index} className="relative group">
                   <img
                     src={image}
-                    alt={`Product image ${index + 1}`}
+                    alt={`Product ${index + 1}`}
                     className="w-full h-32 object-cover rounded-md"
                   />
                   <button

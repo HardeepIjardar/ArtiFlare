@@ -10,13 +10,14 @@ describe('Modal', () => {
   });
 
   it('renders nothing when isOpen is false', () => {
-    const { container } = render(
+    render(
       <Modal isOpen={false} onClose={mockOnClose}>
         <div>Modal Content</div>
       </Modal>
     );
     
-    expect(container.firstChild).toBeNull();
+    expect(screen.queryByText('Modal')).not.toBeInTheDocument();
+    expect(screen.queryByText('Modal Content')).not.toBeInTheDocument();
   });
 
   it('renders modal with default title when isOpen is true', () => {
@@ -77,10 +78,13 @@ describe('Modal', () => {
       </Modal>
     );
     
-    const modalOverlay = screen.getByText('Modal').closest('div');
+    const modalTitle = screen.getByText('Modal');
+    const modalContent = screen.getByText('Modal Content');
+
+    const modalOverlay = modalTitle.closest('.fixed.inset-0');
     expect(modalOverlay).toHaveClass('fixed', 'inset-0', 'bg-gray-600', 'bg-opacity-50', 'overflow-y-auto', 'h-full', 'w-full', 'z-50', 'flex', 'justify-center', 'items-center');
     
-    const modalContent = screen.getByText('Modal Content').closest('div');
-    expect(modalContent?.parentElement).toHaveClass('relative', 'p-8', 'bg-white', 'w-full', 'max-w-md', 'm-auto', 'flex-col', 'flex', 'rounded-lg', 'shadow-lg');
+    const modalContentParent = modalContent.closest('.relative.p-8');
+    expect(modalContentParent).toHaveClass('relative', 'p-8', 'bg-white', 'w-full', 'max-w-md', 'm-auto', 'flex-col', 'flex', 'rounded-lg', 'shadow-lg');
   });
 }); 

@@ -423,10 +423,13 @@ const ProductDetailPage: React.FC = () => {
                   artisanName={artisanName}
                   inCart={cartItems.some(item => item.id === rp.id)}
                   quantity={cartItems.find(item => item.id === rp.id)?.quantity || 1}
-                  showQuantitySelector={false}
+                  showQuantitySelector={!!showQuantitySelector}
                   onAddToCart={handleAddToCart}
                   onIncrement={incrementQuantity}
                   onDecrement={decrementQuantity}
+                  onRemoveFromCart={() => {}}
+                  onUpdateQuantity={() => {}}
+                  onToggleWishlist={() => {}}
                 />
               ))}
             </div>

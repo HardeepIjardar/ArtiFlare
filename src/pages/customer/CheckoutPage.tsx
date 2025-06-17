@@ -242,25 +242,29 @@ const CheckoutPage: React.FC = () => {
             // Do not include customizations if parsing fails to avoid undefined or invalid data
           }
         }
-        return orderItem;
+        return removeUndefined(orderItem); // Ensure individual order items are also cleaned
       });
 
       const orderData = {
         userId: currentUser.uid,
         items: orderItems,
         total: orderTotal,
-        status: 'pending' as const, // Explicitly cast to literal type
-        shippingAddress: cleanedShippingAddress, // Use the cleaned address
+        status: 'pending' as const,
+        shippingAddress: cleanedShippingAddress,
         paymentMethod: selectedPaymentMethod,
-        paymentStatus: 'pending' as const, // Explicitly cast to literal type
+        paymentStatus: 'pending' as const,
         shippingMethod: selectedDeliveryOption,
         shippingCost: shippingCost,
         tax: tax,
-        discount: 0, // Assuming no discounts for now
+        discount: 0, // Ensure discount is always a number
+        trackingNumber: undefined, // Explicitly set optional fields to undefined if not used
+        notes: undefined, // Explicitly set optional fields to undefined if not used
       };
 
       // Clean orderData to remove any undefined fields before sending to Firestore
       const cleanedOrderData = removeUndefined(orderData);
+
+      console.log("Order data being sent to Firestore:", JSON.stringify(cleanedOrderData, null, 2));
 
       const result = await processOrder(cleanedOrderData, orderItems);
 

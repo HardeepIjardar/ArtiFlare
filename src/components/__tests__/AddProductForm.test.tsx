@@ -63,19 +63,17 @@ describe('AddProductForm', () => {
     // Submit the form
     fireEvent.click(screen.getByRole('button', { name: /Add Product/i }));
     
-    await waitFor(() => {
-      expect(createProduct).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'Test Product',
-        description: 'Test Description',
-        price: 99.99,
-        inventory: 10,
-        category: 'Home & Living',
-        materials: ['wood', 'metal'],
-        tags: ['handmade', 'unique'],
-        artisanId: 'test-uid',
-      }));
-      expect(mockOnSuccess).toHaveBeenCalled();
-    });
+    await waitFor(() => expect(createProduct).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Test Product',
+      description: 'Test Description',
+      price: 99.99,
+      inventory: 10,
+      category: 'Home & Living',
+      materials: ['wood', 'metal'],
+      tags: ['handmade', 'unique'],
+      artisanId: 'test-uid',
+    })));
+    await waitFor(() => expect(mockOnSuccess).toHaveBeenCalled());
   });
 
   it('handles form submission error', async () => {
@@ -93,10 +91,8 @@ describe('AddProductForm', () => {
     // Submit the form
     fireEvent.click(screen.getByRole('button', { name: /Add Product/i }));
     
-    await waitFor(() => {
-      expect(screen.getByText('Failed to create product')).toBeInTheDocument();
-      expect(mockOnSuccess).not.toHaveBeenCalled();
-    });
+    await waitFor(() => expect(screen.getByText('Failed to create product')).toBeInTheDocument());
+    await waitFor(() => expect(mockOnSuccess).not.toHaveBeenCalled());
   });
 
   it('validates required fields', async () => {

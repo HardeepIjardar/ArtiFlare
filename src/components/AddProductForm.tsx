@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { createProduct, Product } from '../services/firestore';
+import { createProduct, ProductData } from '../services/firestore';
 
 interface AddProductFormProps {
   onSuccess: () => void;
@@ -51,7 +51,8 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ onSuccess, onCancel }) 
     setError(null);
 
     try {
-      const productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'> = {
+      const productData: ProductData = {
+        id: '', // This will be set by Firestore
         name: formData.name,
         description: formData.description,
         price: parseFloat(formData.price),
@@ -64,18 +65,25 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ onSuccess, onCancel }) 
         isCustomizable: formData.isCustomizable,
         images: formData.images,
         materials: formData.materials ? formData.materials.split(',').map(m => m.trim()) : undefined,
-        occasion: formData.occasion || undefined
+        occasion: formData.occasion || undefined,
+        currency: 'USD',
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
-      const { productId, error } = await createProduct(productData);
+      const { error } = await createProduct(productData);
       
       if (error) {
-        setError(error);
+        setError(error.message);
       } else {
         onSuccess();
       }
     } catch (err) {
-      setError('Failed to create product');
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to create product');
+      }
     } finally {
       setLoading(false);
     }
@@ -265,7 +273,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ onSuccess, onCancel }) 
                 <div key={index} className="relative group">
                   <img
                     src={image}
-                    alt={`Product image ${index + 1}`}
+                    alt={`Product ${index + 1}`}
                     className="w-full h-32 object-cover rounded-md"
                   />
                 </div>

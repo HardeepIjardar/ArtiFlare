@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { getProducts, getUserData } from '../../services/firestore';
+import { Product } from '../../types/product';
 import ProductCard from '../../components/ProductCard';
+import { getErrorMessage } from '../../utils/errorHandling';
 
 const SearchPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -25,28 +27,30 @@ const SearchPage: React.FC = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const { products, error } = await getProducts();
-        if (error) {
-          setError(error);
+        const { products: fetchedProducts, error: productsError } = await getProducts();
+        if (productsError) {
+          setError(getErrorMessage(productsError));
         } else {
-          setProducts(products);
-          // Fetch artisan names for all products
-          const uniqueArtisanIds = Array.from(new Set(products.map(p => p.artisanId)));
+          setProducts(fetchedProducts);
+          const uniqueArtisanIds = Array.from(new Set(fetchedProducts.map(p => p.artisanId)));
           const namesMap: { [key: string]: string } = {};
           await Promise.all(uniqueArtisanIds.map(async (artisanId) => {
             try {
-              const userData = await getUserData(artisanId);
-              if (userData) {
-                namesMap[artisanId] = userData.companyName || userData.displayName || 'Artisan';
+              const result = await getUserData(artisanId);
+              if (result.userData) {
+                namesMap[artisanId] = result.userData.companyName || result.userData.displayName || 'Artisan';
+              } else if (result.error) {
+                console.error(`Error fetching artisan data for ${artisanId}:`, result.error);
               }
-            } catch (err) {
+            } catch (err: unknown) {
+              console.error(`Error fetching artisan data for ${artisanId}:`, err);
               namesMap[artisanId] = 'Artisan';
             }
           }));
           setArtisanNames(namesMap);
         }
-      } catch (err) {
-        setError('Failed to fetch products');
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }
@@ -82,7 +86,8 @@ const SearchPage: React.FC = () => {
       price: product.price,
       quantity: 1,
       artisan: product.artisanId,
-      image: product.images[0]
+      image: product.images ? product.images[0] : '',
+      currency: product.currency || 'INR',
     });
     
     setShowQuantitySelector(prev => ({ ...prev, [productId]: true }));
@@ -125,7 +130,7 @@ const SearchPage: React.FC = () => {
       product.name.toLowerCase().includes(query.toLowerCase()) ||
       product.description.toLowerCase().includes(query.toLowerCase()) ||
       product.category.toLowerCase().includes(query.toLowerCase()) ||
-      product.tags?.some(tag => tag.toLowerCase().includes(query.toLowerCase()));
+      product.tags?.some((tag: string) => tag.toLowerCase().includes(query.toLowerCase()));
 
     const matchesCategory = selectedCategories.length === 0 || 
       selectedCategories.includes(product.category);
@@ -224,7 +229,7 @@ const SearchPage: React.FC = () => {
                       type="number"
                       min="0"
                       value={priceRange.min}
-                      onChange={e => setPriceRange(pr => ({ ...pr, min: e.target.value }))}
+                      onChange={e => setPriceRange(pr => ({ ...pr, min: parseFloat(e.target.value) }))}
                       className="block w-full pl-2 pr-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                     />
                   </div>
@@ -236,7 +241,7 @@ const SearchPage: React.FC = () => {
                       type="number"
                       min="0"
                       value={priceRange.max}
-                      onChange={e => setPriceRange(pr => ({ ...pr, max: e.target.value }))}
+                      onChange={e => setPriceRange(pr => ({ ...pr, max: parseFloat(e.target.value) }))}
                       className="block w-full pl-2 pr-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                     />
                   </div>
@@ -260,10 +265,10 @@ const SearchPage: React.FC = () => {
                 <button
                   className="mt-4 w-full bg-gray-200 text-dark py-2 rounded hover:bg-gray-300 transition-colors duration-150"
                   onClick={() => {
-                    setSelectedOccasion('');
                     setSelectedCategories([]);
                     setPriceRange({ min: 0, max: 1000 });
                     setSortBy('');
+                    setSelectedOccasion('');
                   }}
                 >
                   Reset
@@ -299,6 +304,9 @@ const SearchPage: React.FC = () => {
                   onAddToCart={handleAddToCartClick}
                   onIncrement={incrementQuantity}
                   onDecrement={decrementQuantity}
+                  onRemoveFromCart={() => {}}
+                  onUpdateQuantity={() => {}}
+                  onToggleWishlist={() => {}}
                 />
               ))}
             </div>

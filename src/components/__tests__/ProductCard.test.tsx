@@ -4,7 +4,6 @@ import { BrowserRouter } from 'react-router-dom';
 import ProductCard from '../ProductCard';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { CurrencyProvider } from '../../contexts/CurrencyContext';
-import { db } from '../../services/firebase';
 import { Product } from '../../services/firestore';
 
 // Mock the firebase/firestore functions
@@ -17,12 +16,7 @@ jest.mock('firebase/firestore', () => ({
   arrayRemove: jest.fn(),
 }));
 
-// Mock the firebase service
-jest.mock('../../services/firebase', () => ({
-  db: {},
-}));
-
-const mockProduct: Product = {
+const mockProduct: Product & { id: string } = {
   id: '1',
   name: 'Test Product',
   description: 'Test Description',

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
-import { getProducts, Product, getUserData } from '../../services/firestore';
+import { getProducts, getUserData } from '../../services/firestore';
+import { Product } from '../../types/product';
 import ProductCard from '../../components/ProductCard';
+import { getErrorMessage } from '../../utils/errorHandling';
 
 const OccasionDetailPage: React.FC = () => {
   const { occasion } = useParams<{ occasion: string }>();
@@ -18,33 +20,36 @@ const OccasionDetailPage: React.FC = () => {
   const filterBtnRef = useRef<HTMLButtonElement>(null);
   const [sortBy, setSortBy] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 0 });
   
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const { products, error } = await getProducts();
-        if (error) {
-          setError(error);
+        const { products: fetchedProducts, error: productsError } = await getProducts();
+        if (productsError) {
+          setError(getErrorMessage(productsError));
         } else {
-          setProducts(products);
+          setProducts(fetchedProducts);
           // Fetch artisan names for all products
-          const uniqueArtisanIds = Array.from(new Set(products.map(p => p.artisanId)));
+          const uniqueArtisanIds = Array.from(new Set(fetchedProducts.map(p => p.artisanId)));
           const namesMap: { [key: string]: string } = {};
           await Promise.all(uniqueArtisanIds.map(async (artisanId) => {
             try {
-              const userData = await getUserData(artisanId);
-              if (userData) {
-                namesMap[artisanId] = userData.companyName || userData.displayName || 'Artisan';
+              const result = await getUserData(artisanId);
+              if (result.userData) {
+                namesMap[artisanId] = result.userData.companyName || result.userData.displayName || 'Artisan';
+              } else if (result.error) {
+                console.error(`Error fetching artisan data for ${artisanId}:`, result.error);
               }
-            } catch (err) {
+            } catch (err: unknown) {
+              console.error(`Error fetching artisan data for ${artisanId}:`, err);
               namesMap[artisanId] = 'Artisan';
             }
           }));
           setArtisanNames(namesMap);
         }
-      } catch (err) {
-        setError('Failed to fetch products');
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }
@@ -81,7 +86,8 @@ const OccasionDetailPage: React.FC = () => {
       price: product.price,
       quantity: 1,
       artisan: product.artisanId,
-      image: product.images[0]
+      image: product.images ? product.images[0] : '',
+      currency: product.currency || 'INR',
     });
     
     // Show quantity selector for adjusting
@@ -119,13 +125,13 @@ const OccasionDetailPage: React.FC = () => {
     .filter(product => 
       product.occasion?.toLowerCase() === occasion?.toLowerCase() &&
       (!selectedCategory || product.category?.toLowerCase() === selectedCategory.toLowerCase()) &&
-      (!priceRange.min || product.price >= parseFloat(priceRange.min)) &&
-      (!priceRange.max || product.price <= parseFloat(priceRange.max))
+      (!priceRange.min || product.price >= priceRange.min) &&
+      (!priceRange.max || product.price <= priceRange.max)
     )
     .sort((a, b) => {
       if (sortBy === 'price-asc') return a.price - b.price;
       if (sortBy === 'price-desc') return b.price - a.price;
-      if (sortBy === 'newest') return (b.createdAt as any) - (a.createdAt as any);
+      if (sortBy === 'newest') return (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime();
       return 0;
     });
 
@@ -207,8 +213,8 @@ const OccasionDetailPage: React.FC = () => {
                       id="min-price"
                       type="number"
                       min="0"
-                      value={priceRange.min}
-                      onChange={e => setPriceRange(pr => ({ ...pr, min: e.target.value }))}
+                      value={priceRange.min === 0 ? '' : priceRange.min}
+                      onChange={e => setPriceRange(pr => ({ ...pr, min: parseFloat(e.target.value) || 0 }))}
                       className="block w-full pl-2 pr-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                     />
                   </div>
@@ -219,8 +225,8 @@ const OccasionDetailPage: React.FC = () => {
                       id="max-price"
                       type="number"
                       min="0"
-                      value={priceRange.max}
-                      onChange={e => setPriceRange(pr => ({ ...pr, max: e.target.value }))}
+                      value={priceRange.max === 0 ? '' : priceRange.max}
+                      onChange={e => setPriceRange(pr => ({ ...pr, max: parseFloat(e.target.value) || 0 }))}
                       className="block w-full pl-2 pr-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                     />
                   </div>
@@ -245,7 +251,7 @@ const OccasionDetailPage: React.FC = () => {
                   className="mt-4 w-full bg-gray-200 text-dark py-2 rounded hover:bg-gray-300 transition-colors duration-150"
                   onClick={() => {
                     setSelectedCategory('');
-                    setPriceRange({ min: '', max: '' });
+                    setPriceRange({ min: 0, max: 0 });
                     setSortBy('');
                   }}
                 >
@@ -269,18 +275,20 @@ const OccasionDetailPage: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {occasionProducts.map(product => {
-              const inCart = cartItems.some(item => item.id === product.id);
               return (
                 <ProductCard
                   key={product.id}
                   product={product}
                   artisanName={artisanNames[product.artisanId] || 'Artisan'}
-                  inCart={inCart}
+                  inCart={cartItems.some(item => item.id === product.id)}
                   quantity={quantities[product.id] || 1}
                   showQuantitySelector={!!showQuantitySelector[product.id]}
                   onAddToCart={handleAddToCartClick}
                   onIncrement={incrementQuantity}
                   onDecrement={decrementQuantity}
+                  onRemoveFromCart={() => {}}
+                  onUpdateQuantity={() => {}}
+                  onToggleWishlist={() => {}}
                 />
               );
             })}

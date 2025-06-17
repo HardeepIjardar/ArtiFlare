@@ -90,13 +90,11 @@ describe('EditProductForm', () => {
     // Submit form
     fireEvent.click(screen.getByRole('button', { name: /Update Product/i }));
 
-    await waitFor(() => {
-      expect(updateProduct).toHaveBeenCalledWith('test-product-id', expect.objectContaining({
-        name: 'Updated Product',
-        price: 150,
-      }));
-      expect(mockOnSuccess).toHaveBeenCalled();
-    });
+    await waitFor(() => expect(updateProduct).toHaveBeenCalledWith('test-product-id', expect.objectContaining({
+      name: 'Updated Product',
+      price: 150,
+    })));
+    await waitFor(() => expect(mockOnSuccess).toHaveBeenCalled());
   });
 
   it('handles form submission error', async () => {
@@ -116,10 +114,8 @@ describe('EditProductForm', () => {
     // Submit form
     fireEvent.click(screen.getByRole('button', { name: /Update Product/i }));
 
-    await waitFor(() => {
-      expect(screen.getByText('Failed to update product')).toBeInTheDocument();
-      expect(mockOnSuccess).not.toHaveBeenCalled();
-    });
+    await waitFor(() => expect(screen.getByText('Failed to update product')).toBeInTheDocument());
+    await waitFor(() => expect(mockOnSuccess).not.toHaveBeenCalled());
   });
 
   it('handles image upload', async () => {

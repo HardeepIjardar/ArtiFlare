@@ -34,10 +34,8 @@ describe('GoogleLogin', () => {
     
     fireEvent.click(screen.getByRole('button', { name: /Continue with Google/i }));
     
-    await waitFor(() => {
-      expect(mockOnSuccess).toHaveBeenCalled();
-      expect(mockOnError).not.toHaveBeenCalled();
-    });
+    await waitFor(() => expect(mockOnSuccess).toHaveBeenCalled());
+    await waitFor(() => expect(mockOnError).not.toHaveBeenCalled());
   });
 
   it('calls onError when login fails with an error object', async () => {
@@ -48,10 +46,8 @@ describe('GoogleLogin', () => {
     
     fireEvent.click(screen.getByRole('button', { name: /Continue with Google/i }));
     
-    await waitFor(() => {
-      expect(mockOnError).toHaveBeenCalledWith(errorMessage);
-      expect(mockOnSuccess).not.toHaveBeenCalled();
-    });
+    await waitFor(() => expect(mockOnError).toHaveBeenCalledWith(errorMessage));
+    await waitFor(() => expect(mockOnSuccess).not.toHaveBeenCalled());
   });
 
   it('calls onError when login throws an exception', async () => {
@@ -62,10 +58,8 @@ describe('GoogleLogin', () => {
     
     fireEvent.click(screen.getByRole('button', { name: /Continue with Google/i }));
     
-    await waitFor(() => {
-      expect(mockOnError).toHaveBeenCalledWith(errorMessage);
-      expect(mockOnSuccess).not.toHaveBeenCalled();
-    });
+    await waitFor(() => expect(mockOnError).toHaveBeenCalledWith(errorMessage));
+    await waitFor(() => expect(mockOnSuccess).not.toHaveBeenCalled());
   });
 
   it('handles login without callbacks', async () => {

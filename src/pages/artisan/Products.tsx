@@ -27,7 +27,7 @@ const ArtisanProducts: React.FC = () => {
         
         if (error) {
           console.error('Error fetching products:', error);
-          setError(error);
+          setError(error && typeof error === 'object' && 'message' in error ? error.message : error);
         } else {
           setProducts(products || []);
         }
@@ -53,7 +53,7 @@ const ArtisanProducts: React.FC = () => {
     try {
       const { success, error } = await deleteProduct(productId);
       if (error) {
-        setError(error);
+        setError(error && typeof error === 'object' && 'message' in error ? error.message : error);
       } else if (success) {
         setProducts(products.filter(p => p.id !== productId));
       }
@@ -74,7 +74,7 @@ const ArtisanProducts: React.FC = () => {
       try {
         const { products, error } = await getProductsByArtisan(currentUser.uid);
         if (error) {
-          setError(error);
+          setError(error && typeof error === 'object' && 'message' in error ? error.message : error);
         } else {
           setProducts(products || []);
         }

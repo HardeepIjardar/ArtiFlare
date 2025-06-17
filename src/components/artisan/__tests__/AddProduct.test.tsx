@@ -76,16 +76,14 @@ describe('AddProduct', () => {
     // Submit form
     fireEvent.click(screen.getByRole('button', { name: /Add Product/i }));
 
-    await waitFor(() => {
-      expect(createProduct).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'Test Product',
-        price: 100,
-        inventory: 10,
-        category: 'jewelry',
-        artisanId: mockCurrentUser.uid,
-      }));
-      expect(screen.getByText('Product created successfully!')).toBeInTheDocument();
-    });
+    await waitFor(() => expect(createProduct).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Test Product',
+      price: 100,
+      inventory: 10,
+      category: 'jewelry',
+      artisanId: mockCurrentUser.uid,
+    })));
+    await waitFor(() => expect(screen.getByText('Product created successfully!')).toBeInTheDocument());
   });
 
   it('handles form submission error', async () => {

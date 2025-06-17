@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../services/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import { getProducts, Product } from '../../services/firestore';
+import { getProducts } from '../../services/firestore';
+import { Product } from '../../types/product';
 import ProductCard from '../../components/ProductCard';
 
 const WishlistPage: React.FC = () => {
@@ -23,8 +24,10 @@ const WishlistPage: React.FC = () => {
         if (productIds.length > 0) {
           // Fetch all products in wishlist
           const { products } = await getProducts();
-          const filteredProducts = products.filter(p => productIds.includes(p.id));
-          setWishlistProducts(filteredProducts);
+          const filteredProducts = products
+            .filter(p => !!p.id && productIds.includes(p.id))
+            .map(p => ({ ...p, id: p.id || '' }));
+          setWishlistProducts(filteredProducts as Product[]);
 
           // Fetch artisan names
           const uniqueArtisanIds = Array.from(new Set(filteredProducts.map(p => p.artisanId)));
@@ -81,6 +84,9 @@ const WishlistPage: React.FC = () => {
               quantity={1}
               showQuantitySelector={false}
               onAddToCart={() => {}}
+              onRemoveFromCart={() => {}}
+              onUpdateQuantity={() => {}}
+              onToggleWishlist={() => {}}
               onIncrement={() => {}}
               onDecrement={() => {}}
             />
