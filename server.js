@@ -23,6 +23,7 @@ const senderName = process.env.BREVO_SENDER_NAME || 'Artiflare';
 
 // Endpoint to send order emails
 app.post('/api/send-order-emails', async (req, res) => {
+  console.log('Received request to send order emails:', req.body);
   try {
     const { customer, artisan, order } = req.body;
     // customer: { email, name }
@@ -30,6 +31,7 @@ app.post('/api/send-order-emails', async (req, res) => {
     // order: { id, products: [{ name, image, price, quantity }], total, date }
 
     // 1. Send email to customer (invoice-style)
+    console.log('Attempting to send email to customer:', customer.email);
     const customerHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
         <div style="background: #f8fafc; padding: 24px; text-align: center;">
@@ -73,6 +75,7 @@ app.post('/api/send-order-emails', async (req, res) => {
     `;
 
     // 2. Send email to artisan (notification)
+    console.log('Attempting to send email to artisan:', artisan.email);
     const artisanHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
         <div style="background: #f8fafc; padding: 24px; text-align: center;">
@@ -92,7 +95,10 @@ app.post('/api/send-order-emails', async (req, res) => {
             <tbody>
               ${order.products.map(p => `
                 <tr>
-                  <td style="padding: 8px; border: 1px solid #eee;">${p.name}</td>
+                  <td style="padding: 8px; border: 1px solid #eee;">
+                    ${p.name}
+                    ${p.customizations ? `<div style='font-size: 0.95em; color: #555; margin-top: 4px;'><b>Customizations:</b> ${Object.entries(p.customizations).map(([key, value]) => `${key}: ${value}`).join(', ')}</div>` : ''}
+                  </td>
                   <td style="padding: 8px; border: 1px solid #eee; text-align: right;">${p.quantity}</td>
                 </tr>
               `).join('')}
@@ -111,22 +117,25 @@ app.post('/api/send-order-emails', async (req, res) => {
 
     // Send to customer
     const tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
-    await tranEmailApi.sendTransacEmail({
+    const customerResult = await tranEmailApi.sendTransacEmail({
       sender: { email: senderEmail, name: senderName },
       to: [{ email: customer.email, name: customer.name }],
       subject: `Your Artiflare Order Confirmation (#${order.id})`,
       htmlContent: customerHtml,
     });
+    console.log('Customer email send result:', customerResult);
 
     // Send to artisan
-    await tranEmailApi.sendTransacEmail({
+    const artisanResult = await tranEmailApi.sendTransacEmail({
       sender: { email: senderEmail, name: senderName },
       to: [{ email: artisan.email, name: artisan.name }],
       subject: `New Order Received (#${order.id})`,
       htmlContent: artisanHtml,
     });
+    console.log('Artisan email send result:', artisanResult);
 
     res.status(200).json({ message: 'Emails sent successfully' });
+    console.log('Emails sent successfully');
   } catch (error) {
     console.error('Error sending emails:', error);
     res.status(500).json({ message: 'Failed to send emails', error: error.message });

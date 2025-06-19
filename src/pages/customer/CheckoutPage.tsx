@@ -302,7 +302,7 @@ const CheckoutPage: React.FC = () => {
 
         // 3. Call the backend email API
         try {
-          await fetch('https://artiflare.hardeepijardar.com/api/send-order-emails', {
+          await fetch('http://localhost:5000/api/send-order-emails', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(emailPayload),
