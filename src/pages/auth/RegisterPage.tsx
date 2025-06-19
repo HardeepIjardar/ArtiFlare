@@ -309,27 +309,6 @@ const RegisterPage: React.FC = () => {
 
           {authMethod === 'email' ? (
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Name */}
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  className={`appearance-none relative block w-full px-4 py-3 border ${
-                    errors.name ? 'border-red-300' : 'border-gray-300'
-                  } rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300`}
-                  placeholder="John Doe"
-                />
-                {errors.name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-                )}
-              </div>
-
               {/* Email */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
@@ -481,54 +460,9 @@ const RegisterPage: React.FC = () => {
             </form>
           ) : (
             <div className="space-y-6">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  className={`appearance-none relative block w-full px-4 py-3 border ${
-                    errors.name ? 'border-red-300' : 'border-gray-300'
-                  } rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300`}
-                  placeholder="John Doe"
-                  required
-                />
-                {errors.name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-                )}
-              </div>
-
-              {userType === 'artisan' && (
-                <div>
-                  <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-1">
-                    Company Name
-                  </label>
-                  <input
-                    type="text"
-                    id="companyName"
-                    name="companyName"
-                    value={form.companyName}
-                    onChange={handleChange}
-                    className={`appearance-none relative block w-full px-4 py-3 border ${
-                      errors.companyName ? 'border-red-300' : 'border-gray-300'
-                    } rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300`}
-                    placeholder="Your Shop Name"
-                    required
-                  />
-                  {errors.companyName && (
-                    <p className="mt-1 text-sm text-red-600">{errors.companyName}</p>
-                  )}
-                </div>
-              )}
-
               <PhoneAuth
                 onSuccess={handlePhoneAuthSuccess}
                 onError={(error: string) => setErrors({ form: error })}
-                name={form.name}
               />
             </div>
           )}

@@ -181,25 +181,9 @@ const LoginPage: React.FC = () => {
             </form>
           ) : (
             <>
-              <div>
-                <label htmlFor="phoneName" className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  id="phoneName"
-                  name="phoneName"
-                  value={phoneName}
-                  onChange={e => setPhoneName(e.target.value)}
-                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300"
-                  placeholder="Your Name"
-                  required
-                />
-              </div>
               <PhoneAuth
                 onSuccess={handlePhoneAuthSuccess}
                 onError={(error: string) => setError(error)}
-                name={phoneName}
               />
             </>
           )}

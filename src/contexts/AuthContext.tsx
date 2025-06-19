@@ -24,7 +24,7 @@ import {
   updateUserPassword
 } from '../services/firebase';
 import { auth } from '../services/firebase';
-import { getUserData, UserData } from '../services/firestore';
+import { getUserData, UserData, createUser } from '../services/firestore';
 
 // Define the shape of our context
 interface AuthContextType {
@@ -82,7 +82,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser(user);
       if (user) {
         // Fetch Firestore user data when auth state changes
-        const result = await getUserData(user.uid);
+        let result = await getUserData(user.uid);
+        if (!result.userData) {
+          // User doc missing, create it
+          const minimalUser = {
+            displayName: user.displayName || '',
+            email: user.email || '',
+            role: 'customer' as 'customer',
+            photoURL: user.photoURL || undefined,
+            phoneNumber: user.phoneNumber || undefined,
+          };
+          await createUser(user.uid, minimalUser);
+          // Fetch again after creation
+          result = await getUserData(user.uid);
+        }
         if (result.userData) {
           setFirestoreUser(result.userData);
         } else if (result.error) {
