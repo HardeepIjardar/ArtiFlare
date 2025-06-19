@@ -269,6 +269,50 @@ const CheckoutPage: React.FC = () => {
       const result = await processOrder(cleanedOrderData, orderItems);
 
       if (result?.id) {
+        // 1. Fetch artisan data (assuming all items are from the same artisan)
+        const artisanId = cartItems[0]?.artisan;
+        let artisanData = null;
+        if (artisanId) {
+          const artisanResult = await getUserData(artisanId);
+          artisanData = artisanResult.userData;
+        }
+
+        // 2. Prepare email payload
+        const emailPayload = {
+          customer: {
+            email: userData.email,
+            name: userData.displayName || userData.email,
+          },
+          artisan: {
+            email: artisanData?.email || '',
+            name: artisanData?.companyName || artisanData?.displayName || 'Artisan',
+          },
+          order: {
+            id: result.id,
+            products: cartItems.map(item => ({
+              name: item.name,
+              image: item.image || '',
+              price: item.price,
+              quantity: item.quantity,
+            })),
+            total: orderTotal,
+            date: new Date().toLocaleDateString(),
+          }
+        };
+
+        // 3. Call the backend email API
+        try {
+          await fetch('https://artiflare.hardeepijardar.com/api/send-order-emails', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(emailPayload),
+          });
+        } catch (err) {
+          console.error('Failed to send order emails:', err);
+          // Optionally show a non-blocking error to the user
+        }
+
+        // 4. Continue with your existing logic
         alert('Order placed successfully!');
         clearCart(); // Empty the customer's cart
         navigate('/thank-you'); // Redirect to the new thank you page

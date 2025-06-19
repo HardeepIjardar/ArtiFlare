@@ -196,7 +196,7 @@ const ArtisanProducts: React.FC = () => {
                       <div className="h-10 w-10 flex-shrink-0">
                         <img
                           className="h-10 w-10 rounded-md object-cover"
-                          src={product.images[0]}
+                          src={product.images && product.images[0] ? product.images[0] : '/logo.png'}
                           alt={product.name}
                         />
                       </div>
