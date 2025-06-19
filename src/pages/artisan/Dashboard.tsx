@@ -1,11 +1,26 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { getUserData } from '../../services/firestore';
 
 const Dashboard: React.FC = () => {
+  const { currentUser } = useAuth();
+  const [displayName, setDisplayName] = React.useState<string>('Artisan');
+
+  React.useEffect(() => {
+    if (currentUser) {
+      getUserData(currentUser.uid).then((data) => {
+        if (data?.userData) {
+          setDisplayName(data.userData.companyName || data.userData.displayName || 'Artisan');
+        }
+      });
+    }
+  }, [currentUser]);
+
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-dark">Welcome, Artisan!</h1>
+        <h1 className="text-2xl font-bold text-dark">Welcome, {displayName}!</h1>
         <p className="text-dark-600 mt-1">Here's an overview of your store performance</p>
       </div>
       

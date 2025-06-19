@@ -98,6 +98,25 @@ export interface UserData {
     emailUpdates: boolean;
     theme: string;
   };
+  // Added for artisan settings compatibility
+  description?: string;
+  category?: string;
+  bankAccount?: string;
+  payoutSchedule?: string;
+  automaticPayout?: boolean;
+  shippingFrom?: string;
+  shippingStandard?: boolean;
+  shippingExpress?: boolean;
+  shippingInternational?: boolean;
+  notifyNewOrder?: boolean;
+  notifyOrderShipped?: boolean;
+  notifyPaymentReceived?: boolean;
+  notifyNewOrderEmail?: boolean;
+  notifyNewOrderSms?: boolean;
+  notifyOrderShippedEmail?: boolean;
+  notifyOrderShippedSms?: boolean;
+  notifyPaymentReceivedEmail?: boolean;
+  notifyPaymentReceivedSms?: boolean;
 }
 
 export interface OrderItem {

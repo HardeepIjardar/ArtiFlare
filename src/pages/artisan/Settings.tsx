@@ -1,14 +1,136 @@
 import React from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { getUserData, updateUserProfile } from '../../services/firestore';
 
 const ArtisanSettings: React.FC = () => {
+  const { currentUser } = useAuth();
+  const [form, setForm] = React.useState({
+    shopName: '',
+    description: '',
+    category: '',
+    bankAccount: '',
+    payoutSchedule: 'Weekly',
+    automaticPayout: false,
+    shippingFrom: '',
+    shippingOptions: {
+      standard: false,
+      express: false,
+      international: false,
+    },
+    notifications: {
+      newOrder: false,
+      orderShipped: false,
+      paymentReceived: false,
+      newOrderEmail: false,
+      newOrderSms: false,
+      orderShippedEmail: false,
+      orderShippedSms: false,
+      paymentReceivedEmail: false,
+      paymentReceivedSms: false,
+    },
+  });
+  const [loading, setLoading] = React.useState(true);
+  const [success, setSuccess] = React.useState(false);
+
+  React.useEffect(() => {
+    if (currentUser) {
+      getUserData(currentUser.uid).then((data) => {
+        if (data?.userData) {
+          setForm(f => ({
+            ...f,
+            shopName: data.userData.companyName || '',
+            description: data.userData.description || '',
+            category: data.userData.category || '',
+            bankAccount: data.userData.bankAccount || '',
+            payoutSchedule: data.userData.payoutSchedule || 'Weekly',
+            automaticPayout: !!data.userData.automaticPayout,
+            shippingFrom: data.userData.shippingFrom || '',
+            shippingOptions: {
+              standard: !!data.userData.shippingStandard,
+              express: !!data.userData.shippingExpress,
+              international: !!data.userData.shippingInternational,
+            },
+            notifications: {
+              newOrder: !!data.userData.notifyNewOrder,
+              orderShipped: !!data.userData.notifyOrderShipped,
+              paymentReceived: !!data.userData.notifyPaymentReceived,
+              newOrderEmail: !!data.userData.notifyNewOrderEmail,
+              newOrderSms: !!data.userData.notifyNewOrderSms,
+              orderShippedEmail: !!data.userData.notifyOrderShippedEmail,
+              orderShippedSms: !!data.userData.notifyOrderShippedSms,
+              paymentReceivedEmail: !!data.userData.notifyPaymentReceivedEmail,
+              paymentReceivedSms: !!data.userData.notifyPaymentReceivedSms,
+            },
+          }));
+        }
+        setLoading(false);
+      });
+    }
+  }, [currentUser]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    let checked = false;
+    if (type === 'checkbox' && 'checked' in e.target) {
+      checked = (e.target as HTMLInputElement).checked;
+    }
+    if (name.startsWith('shippingOptions.')) {
+      const key = name.split('.')[1];
+      setForm(f => ({ ...f, shippingOptions: { ...f.shippingOptions, [key]: checked } }));
+    } else if (name.startsWith('notifications.')) {
+      const key = name.split('.')[1];
+      setForm(f => ({ ...f, notifications: { ...f.notifications, [key]: checked } }));
+    } else if (type === 'checkbox') {
+      setForm(f => ({ ...f, [name]: checked }));
+    } else {
+      setForm(f => ({ ...f, [name]: value }));
+    }
+  };
+
+  const handleSave = async () => {
+    if (!currentUser) return;
+    setLoading(true);
+    await updateUserProfile(currentUser.uid, {
+      companyName: form.shopName,
+      description: form.description,
+      category: form.category,
+      bankAccount: form.bankAccount,
+      payoutSchedule: form.payoutSchedule,
+      automaticPayout: form.automaticPayout,
+      shippingFrom: form.shippingFrom,
+      shippingStandard: form.shippingOptions.standard,
+      shippingExpress: form.shippingOptions.express,
+      shippingInternational: form.shippingOptions.international,
+      notifyNewOrder: form.notifications.newOrder,
+      notifyOrderShipped: form.notifications.orderShipped,
+      notifyPaymentReceived: form.notifications.paymentReceived,
+      notifyNewOrderEmail: form.notifications.newOrderEmail,
+      notifyNewOrderSms: form.notifications.newOrderSms,
+      notifyOrderShippedEmail: form.notifications.orderShippedEmail,
+      notifyOrderShippedSms: form.notifications.orderShippedSms,
+      notifyPaymentReceivedEmail: form.notifications.paymentReceivedEmail,
+      notifyPaymentReceivedSms: form.notifications.paymentReceivedSms,
+    });
+    setLoading(false);
+    setSuccess(true);
+    setTimeout(() => setSuccess(false), 2000);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-dark">Settings</h1>
-        <button className="bg-primary text-white px-4 py-2 rounded hover:bg-primary-700">
+        <button className="bg-primary text-white px-4 py-2 rounded hover:bg-primary-700" onClick={handleSave}>
           Save Changes
         </button>
       </div>
+      
+      {success && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6" role="alert">
+          <strong className="font-bold">Success!</strong>
+          <span className="block sm:inline">Changes saved successfully!</span>
+        </div>
+      )}
       
       <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
         <div className="p-6 border-b border-gray-200">
@@ -29,7 +151,8 @@ const ArtisanSettings: React.FC = () => {
                 name="shop-name"
                 id="shop-name"
                 className="shadow-sm focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
-                defaultValue="Emma's Crafts"
+                value={form.shopName}
+                onChange={handleChange}
               />
             </div>
           </div>
@@ -44,7 +167,8 @@ const ArtisanSettings: React.FC = () => {
                 name="description"
                 rows={4}
                 className="shadow-sm focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
-                defaultValue="Handcrafted wooden items and home decor made with sustainable materials and love."
+                value={form.description}
+                onChange={handleChange}
               />
             </div>
             <p className="mt-2 text-sm text-dark-500">
@@ -79,6 +203,8 @@ const ArtisanSettings: React.FC = () => {
               id="category"
               name="category"
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+              value={form.category}
+              onChange={handleChange}
             >
               <option>Home & Living</option>
               <option>Jewelry</option>
@@ -111,6 +237,8 @@ const ArtisanSettings: React.FC = () => {
                 id="bank-account"
                 className="shadow-sm focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
                 placeholder="••••••••1234"
+                value={form.bankAccount}
+                onChange={handleChange}
               />
             </div>
           </div>
@@ -123,6 +251,8 @@ const ArtisanSettings: React.FC = () => {
               id="payout-schedule"
               name="payout-schedule"
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+              value={form.payoutSchedule}
+              onChange={handleChange}
             >
               <option>Weekly</option>
               <option>Bi-weekly</option>
@@ -137,6 +267,8 @@ const ArtisanSettings: React.FC = () => {
                 name="automatic-payout"
                 type="checkbox"
                 className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                checked={form.automaticPayout}
+                onChange={handleChange}
               />
               <label htmlFor="automatic-payout" className="ml-2 block text-sm text-dark">
                 Automatic payouts
@@ -165,7 +297,8 @@ const ArtisanSettings: React.FC = () => {
                 name="shipping-from"
                 id="shipping-from"
                 className="shadow-sm focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
-                defaultValue="New York, NY, United States"
+                value={form.shippingFrom}
+                onChange={handleChange}
               />
             </div>
           </div>
@@ -181,7 +314,8 @@ const ArtisanSettings: React.FC = () => {
                   name="shipping-option"
                   type="checkbox"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                  defaultChecked
+                  checked={form.shippingOptions.standard}
+                  onChange={handleChange}
                 />
                 <label htmlFor="standard-shipping" className="ml-2 block text-sm text-dark">
                   Standard Shipping (3-5 business days)
@@ -193,7 +327,8 @@ const ArtisanSettings: React.FC = () => {
                   name="shipping-option"
                   type="checkbox"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                  defaultChecked
+                  checked={form.shippingOptions.express}
+                  onChange={handleChange}
                 />
                 <label htmlFor="express-shipping" className="ml-2 block text-sm text-dark">
                   Express Shipping (1-2 business days)
@@ -205,6 +340,8 @@ const ArtisanSettings: React.FC = () => {
                   name="shipping-option"
                   type="checkbox"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                  checked={form.shippingOptions.international}
+                  onChange={handleChange}
                 />
                 <label htmlFor="international-shipping" className="ml-2 block text-sm text-dark">
                   International Shipping
@@ -232,7 +369,8 @@ const ArtisanSettings: React.FC = () => {
                   name="new-order"
                   type="checkbox"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                  defaultChecked
+                  checked={form.notifications.newOrder}
+                  onChange={handleChange}
                 />
                 <label htmlFor="new-order" className="ml-2 block text-sm text-dark">
                   New order received
@@ -244,7 +382,8 @@ const ArtisanSettings: React.FC = () => {
                   name="new-order-email"
                   type="checkbox"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                  defaultChecked
+                  checked={form.notifications.newOrderEmail}
+                  onChange={handleChange}
                 />
                 <label htmlFor="new-order-email" className="block text-sm text-dark-500">
                   Email
@@ -254,7 +393,8 @@ const ArtisanSettings: React.FC = () => {
                   name="new-order-sms"
                   type="checkbox"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                  defaultChecked
+                  checked={form.notifications.newOrderSms}
+                  onChange={handleChange}
                 />
                 <label htmlFor="new-order-sms" className="block text-sm text-dark-500">
                   SMS
@@ -269,7 +409,8 @@ const ArtisanSettings: React.FC = () => {
                   name="order-shipped"
                   type="checkbox"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                  defaultChecked
+                  checked={form.notifications.orderShipped}
+                  onChange={handleChange}
                 />
                 <label htmlFor="order-shipped" className="ml-2 block text-sm text-dark">
                   Order shipped
@@ -281,7 +422,8 @@ const ArtisanSettings: React.FC = () => {
                   name="order-shipped-email"
                   type="checkbox"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                  defaultChecked
+                  checked={form.notifications.orderShippedEmail}
+                  onChange={handleChange}
                 />
                 <label htmlFor="order-shipped-email" className="block text-sm text-dark-500">
                   Email
@@ -291,6 +433,8 @@ const ArtisanSettings: React.FC = () => {
                   name="order-shipped-sms"
                   type="checkbox"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                  checked={form.notifications.orderShippedSms}
+                  onChange={handleChange}
                 />
                 <label htmlFor="order-shipped-sms" className="block text-sm text-dark-500">
                   SMS
@@ -305,7 +449,8 @@ const ArtisanSettings: React.FC = () => {
                   name="payment-received"
                   type="checkbox"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                  defaultChecked
+                  checked={form.notifications.paymentReceived}
+                  onChange={handleChange}
                 />
                 <label htmlFor="payment-received" className="ml-2 block text-sm text-dark">
                   Payment received
@@ -317,7 +462,8 @@ const ArtisanSettings: React.FC = () => {
                   name="payment-received-email"
                   type="checkbox"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                  defaultChecked
+                  checked={form.notifications.paymentReceivedEmail}
+                  onChange={handleChange}
                 />
                 <label htmlFor="payment-received-email" className="block text-sm text-dark-500">
                   Email
@@ -327,6 +473,8 @@ const ArtisanSettings: React.FC = () => {
                   name="payment-received-sms"
                   type="checkbox"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                  checked={form.notifications.paymentReceivedSms}
+                  onChange={handleChange}
                 />
                 <label htmlFor="payment-received-sms" className="block text-sm text-dark-500">
                   SMS

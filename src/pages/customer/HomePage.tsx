@@ -453,15 +453,34 @@ const HomePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="mt-12 py-8 bg-gray-100 text-center">
-        <h2 className="text-2xl font-bold text-dark mb-4">Ready to explore handcrafted treasures?</h2>
-        <p className="text-lg text-dark-600 mb-6">Discover unique items made with passion and skill.</p>
-        <Link 
-          to="/products" 
-          className="inline-block bg-primary hover:bg-primary-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition-colors"
-        >
-          Shop All Products
-        </Link>
+      {/* Categories Section */}
+      <div className="mt-16 py-12 bg-sand-50">
+        <h2 className="text-3xl font-extrabold text-dark mb-2 text-center tracking-tight">Shop by Category</h2>
+        <p className="text-dark-500 text-center mb-10 text-lg">Discover unique handcrafted items by category</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
+          {[
+            { name: 'Clothing', icon: '👗', color: 'bg-sage-100' },
+            { name: 'Shoes', icon: '👟', color: 'bg-primary-100' },
+            { name: 'Jewelry', icon: '💍', color: 'bg-sand-200' },
+            { name: 'Home Decor', icon: '🏠', color: 'bg-sage-200' },
+            { name: 'Art', icon: '🎨', color: 'bg-primary-50' },
+            { name: 'Accessories', icon: '👜', color: 'bg-sand-100' },
+            { name: 'Ceramics', icon: '🏺', color: 'bg-primary-200' },
+            { name: 'Woodwork', icon: '🪵', color: 'bg-sage-50' },
+          ].map((cat) => (
+            <button
+              key={cat.name}
+              aria-label={`Shop ${cat.name}`}
+              className="group flex flex-col items-center justify-center p-6 rounded-2xl border border-sand-200 shadow bg-white transition transform hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              type="button"
+            >
+              <span className={`mb-4 flex items-center justify-center w-16 h-16 rounded-full text-4xl ${cat.color} group-hover:bg-primary-100 group-hover:scale-110 transition-all`}>
+                {cat.icon}
+              </span>
+              <span className="font-semibold text-lg text-dark group-hover:text-primary transition-colors">{cat.name}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
