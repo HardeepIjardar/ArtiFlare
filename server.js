@@ -5,7 +5,22 @@ const PORT = process.env.PORT || 5000;
 const SibApiV3Sdk = require('sib-api-v3-sdk');
 require('dotenv').config();
 
-app.use(cors());
+// CORS setup: allow production frontend and localhost for dev
+const allowedOrigins = [
+  'https://artiflare.hardeepijardar.com',
+  'http://localhost:3000', // React dev server
+];
+app.use(cors({
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
+}));
 app.use(express.json());
 
 // Health check
