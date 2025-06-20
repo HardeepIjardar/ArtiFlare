@@ -204,33 +204,30 @@ const RegisterPage: React.FC = () => {
   const handlePhoneAuthSuccess = async (user: User) => {
     try {
       setIsLoading(true);
-      
-      // Define display name for phone auth
-      const phoneDisplayName = form.name || user.phoneNumber || 'User';
-      console.log('Phone auth success for user:', user.uid, 'with display name:', phoneDisplayName);
-
-      // Update the user's display name in Firebase Auth
-      await updateProfile(user, {
-        displayName: phoneDisplayName
-      });
-      
-      // Create user document in Firestore with role
-      const firestoreResult = await createUser(user.uid, {
-        displayName: phoneDisplayName,
-        phoneNumber: user.phoneNumber || undefined,
+      // Check if Firestore user document exists
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists()) {
+        // Create user document with phone number as display name
+        await createUser(user.uid, {
+          displayName: user.phoneNumber || 'User',
+          phoneNumber: user.phoneNumber || undefined,
+          role: userType === 'buyer' ? 'customer' : 'artisan',
+          companyName: userType === 'artisan' ? form.companyName : undefined,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now()
+        });
+      }
+      // Redirect based on role
+      await handleRedirect({
+        uid: user.uid,
+        displayName: user.phoneNumber || 'User',
+        email: user.email || '',
         role: userType === 'buyer' ? 'customer' : 'artisan',
         companyName: userType === 'artisan' ? form.companyName : undefined,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
+        phoneNumber: user.phoneNumber || undefined,
+        createdAt: new Date(),
+        updatedAt: new Date()
       });
-
-      if (firestoreResult.success && firestoreResult.userData) {
-        // Redirect based on role using the returned userData
-        await handleRedirect(firestoreResult.userData);
-      } else {
-        // Handle the case where Firestore user creation failed or returned no data
-        setErrors({ form: firestoreResult.error?.message || 'Firestore user creation failed.' });
-      }
     } catch (error: any) {
       setErrors({ form: error.message || 'Failed to complete registration' });
     } finally {

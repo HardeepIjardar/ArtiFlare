@@ -22,7 +22,8 @@ const CheckoutPage: React.FC = () => {
     state: '',
     zipCode: '',
     country: '',
-    label: ''
+    label: '',
+    phoneNumber: '',
   });
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [editAddress, setEditAddress] = useState({
@@ -31,9 +32,18 @@ const CheckoutPage: React.FC = () => {
     state: '',
     zipCode: '',
     country: '',
-    label: ''
+    label: '',
+    phoneNumber: '',
   });
   const { convertPrice, formatPrice } = useCurrency();
+  const [addressError, setAddressError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [orderError, setOrderError] = useState<string | null>(null);
+  const [emailWarning, setEmailWarning] = useState<string | null>(null);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -74,10 +84,24 @@ const CheckoutPage: React.FC = () => {
     setSelectedDeliveryOption(option);
   };
 
+  const validateAddress = (address: typeof newAddress) => {
+    if (!address.label.trim() || !address.street.trim() || !address.city.trim() || !address.state.trim() || !address.zipCode.trim() || !address.country.trim() || !address.phoneNumber.trim()) {
+      return 'All fields are required.';
+    }
+    // Add more validation as needed (e.g., zip code/phone format)
+    return null;
+  };
+
   const handleNewAddressSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAddressError(null);
     if (!currentUser) return;
-
+    const validationError = validateAddress(newAddress);
+    if (validationError) {
+      setAddressError(validationError);
+      return;
+    }
+    setIsSavingAddress(true);
     try {
       // 1. Save the new address to Firestore
       const newAddressData = { ...newAddress, id: uuidv4(), isDefault: userData?.addresses?.length === 0 };
@@ -97,11 +121,13 @@ const CheckoutPage: React.FC = () => {
 
       // 4. Optionally, select the new address and reset the form
       setSelectedAddress(newAddressData.id);
-      setNewAddress({ street: '', city: '', state: '', zipCode: '', country: '', label: '' });
+      setNewAddress({ street: '', city: '', state: '', zipCode: '', country: '', label: '', phoneNumber: '' });
       setShowNewAddressForm(false);
     } catch (error) {
       // handle error
       console.error('Error saving address:', error);
+    } finally {
+      setIsSavingAddress(false);
     }
   };
 
@@ -113,14 +139,22 @@ const CheckoutPage: React.FC = () => {
       state: address.state,
       zipCode: address.zipCode,
       country: address.country,
-      label: address.label || ''
+      label: address.label || '',
+      phoneNumber: address.phoneNumber || '',
     });
     setShowNewAddressForm(false);
   };
 
   const handleEditAddressSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAddressError(null);
     if (!currentUser || !userData) return;
+    const validationError = validateAddress(editAddress);
+    if (validationError) {
+      setAddressError(validationError);
+      return;
+    }
+    setIsEditingAddress(true);
     try {
       const updatedAddresses = (userData.addresses || []).map(addr =>
         addr.id === editingAddressId ? { ...addr, ...editAddress } : addr
@@ -135,11 +169,18 @@ const CheckoutPage: React.FC = () => {
       setEditingAddressId(null);
     } catch (error) {
       console.error('Error updating address:', error);
+    } finally {
+      setIsEditingAddress(false);
     }
   };
 
   const handleDeleteAddress = async (addressId: string) => {
+    setDeleteError(null);
     if (!currentUser || !userData) return;
+    if ((userData.addresses || []).length === 1) {
+      setDeleteError('You must have at least one address.');
+      return;
+    }
     try {
       const updatedAddresses = (userData.addresses || []).filter(addr => addr.id !== addressId);
       const result = await updateUserProfile(currentUser.uid, { addresses: updatedAddresses });
@@ -172,36 +213,40 @@ const CheckoutPage: React.FC = () => {
   const orderTotal = cartTotal + shippingCost + tax;
 
   const handlePlaceOrder = async () => {
+    setOrderError(null);
+    setEmailWarning(null);
+    setIsPlacingOrder(true);
     if (!currentUser) {
       alert('Please log in to place an order.');
+      setIsPlacingOrder(false);
       return;
     }
-
     if (!userData) {
       alert('User data not loaded. Please try again.');
+      setIsPlacingOrder(false);
       return;
     }
-
     if (cartItems.length === 0) {
       alert('Your cart is empty. Please add items before placing an order.');
+      setIsPlacingOrder(false);
       return;
     }
-
     if (!selectedAddress) {
       alert('Please select a shipping address.');
+      setIsPlacingOrder(false);
       return;
     }
-
     // Ensure addresses are available before proceeding
-    const addresses = userData.addresses || []; // Provide a default empty array if addresses is undefined/null
+    const addresses = userData.addresses || [];
     if (addresses.length === 0) {
       alert('Please add and select a shipping address.');
+      setIsPlacingOrder(false);
       return;
     }
-
     const selectedAddressData: Address | undefined = addresses.find(addr => addr.id === selectedAddress);
     if (!selectedAddressData) {
       alert('Selected address not found.');
+      setIsPlacingOrder(false);
       return;
     }
 
@@ -309,23 +354,41 @@ const CheckoutPage: React.FC = () => {
           });
         } catch (err) {
           console.error('Failed to send order emails:', err);
-          // Optionally show a non-blocking error to the user
+          setEmailWarning('Order placed, but confirmation email could not be sent. Please contact support if you do not receive an email.');
         }
 
         // 4. Continue with your existing logic
-        alert('Order placed successfully!');
+        setOrderSuccess('Order placed successfully!');
         clearCart(); // Empty the customer's cart
         navigate('/thank-you'); // Redirect to the new thank you page
       } 
     } catch (error: any) {
-      console.error('Error placing order:', error);
-      alert(`Failed to place order: ${error.message || 'An unknown error occurred'}`);
+      let message = error?.message || 'Failed to place order: An unknown error occurred';
+      if (error?.code === 'insufficient-inventory') {
+        message = 'One or more products in your cart are out of stock. Please update your cart and try again.';
+      } else if (error?.code === 'product-not-found') {
+        message = 'One or more products in your cart could not be found. Please update your cart and try again.';
+      }
+      setOrderError(message);
+      alert(message);
+    } finally {
+      setIsPlacingOrder(false);
     }
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Centered loading overlay */}
+      {isPlacingOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="flex flex-col items-center">
+            <span className="animate-spin h-12 w-12 mb-4 border-t-4 border-b-4 border-primary rounded-full"></span>
+            <span className="text-lg text-white font-semibold">Placing your order...</span>
+          </div>
+        </div>
+      )}
       <h1 className="text-3xl font-bold text-dark mb-6">Checkout</h1>
+      {orderSuccess && <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4" aria-live="polite">{orderSuccess}</div>}
       
       <div className="md:flex md:space-x-6">
         <div className="md:w-2/3">
@@ -351,6 +414,7 @@ const CheckoutPage: React.FC = () => {
                           {address.city}, {address.state} {address.zipCode}
                         </p>
                         <p className="text-dark-600">{address.country}</p>
+                        <p className="text-dark-600">{address.phoneNumber ? `Phone: ${address.phoneNumber}` : ''}</p>
                       </div>
                       <div className="flex flex-col items-end space-y-2">
                         {address.isDefault && (
@@ -384,6 +448,7 @@ const CheckoutPage: React.FC = () => {
                             onChange={e => setEditAddress({ ...editAddress, label: e.target.value })}
                             placeholder="Label"
                             className="w-full px-2 py-1 border border-gray-300 rounded"
+                            id="address-label"
                           />
                           <input
                             type="text"
@@ -391,6 +456,7 @@ const CheckoutPage: React.FC = () => {
                             onChange={e => setEditAddress({ ...editAddress, street: e.target.value })}
                             placeholder="Street"
                             className="w-full px-2 py-1 border border-gray-300 rounded"
+                            id="address-street"
                           />
                           <input
                             type="text"
@@ -398,6 +464,7 @@ const CheckoutPage: React.FC = () => {
                             onChange={e => setEditAddress({ ...editAddress, city: e.target.value })}
                             placeholder="City"
                             className="w-full px-2 py-1 border border-gray-300 rounded"
+                            id="address-city"
                           />
                           <input
                             type="text"
@@ -405,6 +472,7 @@ const CheckoutPage: React.FC = () => {
                             onChange={e => setEditAddress({ ...editAddress, state: e.target.value })}
                             placeholder="State"
                             className="w-full px-2 py-1 border border-gray-300 rounded"
+                            id="address-state"
                           />
                           <input
                             type="text"
@@ -412,6 +480,7 @@ const CheckoutPage: React.FC = () => {
                             onChange={e => setEditAddress({ ...editAddress, zipCode: e.target.value })}
                             placeholder="ZIP Code"
                             className="w-full px-2 py-1 border border-gray-300 rounded"
+                            id="address-zipCode"
                           />
                           <input
                             type="text"
@@ -419,14 +488,31 @@ const CheckoutPage: React.FC = () => {
                             onChange={e => setEditAddress({ ...editAddress, country: e.target.value })}
                             placeholder="Country"
                             className="w-full px-2 py-1 border border-gray-300 rounded"
+                            id="address-country"
+                          />
+                          <input
+                            type="text"
+                            value={editAddress.phoneNumber}
+                            onChange={e => setEditAddress({ ...editAddress, phoneNumber: e.target.value })}
+                            placeholder="Phone Number"
+                            className="w-full px-2 py-1 border border-gray-300 rounded"
+                            id="address-phoneNumber-edit"
                           />
                         </div>
                         <div className="flex space-x-2 mt-2">
-                          <button type="submit" className="px-3 py-1 bg-primary text-white rounded">Save</button>
+                          <button
+                            type="submit"
+                            className="px-3 py-1 bg-primary text-white rounded flex items-center justify-center"
+                            disabled={isEditingAddress}
+                          >
+                            {isEditingAddress ? <span className="animate-spin h-4 w-4 mr-2 border-t-2 border-b-2 border-white rounded-full"></span> : null}
+                            Save
+                          </button>
                           <button type="button" className="px-3 py-1 border rounded" onClick={() => setEditingAddressId(null)}>Cancel</button>
                         </div>
                       </form>
                     )}
+                    {deleteError && <p className="text-red-600 text-sm mb-2" aria-live="polite">{deleteError}</p>}
                   </div>
                 ))}
               </div>
@@ -445,58 +531,75 @@ const CheckoutPage: React.FC = () => {
               <form onSubmit={handleNewAddressSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-dark-600 mb-1">Address Label</label>
+                    <label htmlFor="address-label" className="block text-sm font-medium text-dark-600 mb-1">Address Label</label>
                     <input
                       type="text"
                       value={newAddress.label}
                       onChange={(e) => setNewAddress({ ...newAddress, label: e.target.value })}
                       placeholder="e.g., Home, Work"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                      id="address-label"
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-dark-600 mb-1">Street Address</label>
+                    <label htmlFor="address-street" className="block text-sm font-medium text-dark-600 mb-1">Street Address</label>
                     <input
                       type="text"
                       value={newAddress.street}
                       onChange={(e) => setNewAddress({ ...newAddress, street: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                      id="address-street"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-dark-600 mb-1">City</label>
+                    <label htmlFor="address-city" className="block text-sm font-medium text-dark-600 mb-1">City</label>
                     <input
                       type="text"
                       value={newAddress.city}
                       onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                      id="address-city"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-dark-600 mb-1">State/Province</label>
+                    <label htmlFor="address-state" className="block text-sm font-medium text-dark-600 mb-1">State/Province</label>
                     <input
                       type="text"
                       value={newAddress.state}
                       onChange={(e) => setNewAddress({ ...newAddress, state: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                      id="address-state"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-dark-600 mb-1">ZIP Code</label>
+                    <label htmlFor="address-zipCode" className="block text-sm font-medium text-dark-600 mb-1">ZIP Code</label>
                     <input
                       type="text"
                       value={newAddress.zipCode}
                       onChange={(e) => setNewAddress({ ...newAddress, zipCode: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                      id="address-zipCode"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-dark-600 mb-1">Country</label>
+                    <label htmlFor="address-country" className="block text-sm font-medium text-dark-600 mb-1">Country</label>
                     <input
                       type="text"
                       value={newAddress.country}
                       onChange={(e) => setNewAddress({ ...newAddress, country: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                      id="address-country"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="address-phoneNumber" className="block text-sm font-medium text-dark-600 mb-1">Phone Number</label>
+                    <input
+                      type="text"
+                      value={newAddress.phoneNumber}
+                      onChange={e => setNewAddress({ ...newAddress, phoneNumber: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                      id="address-phoneNumber"
+                      placeholder="e.g., +91 9876543210"
                     />
                   </div>
                 </div>
@@ -508,10 +611,13 @@ const CheckoutPage: React.FC = () => {
                   >
                     Cancel
                   </button>
+                  {addressError && <p className="text-red-600 text-sm mb-2" aria-live="polite">{addressError}</p>}
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-700"
+                    className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-700 flex items-center justify-center"
+                    disabled={isSavingAddress || !newAddress.label.trim() || !newAddress.street.trim() || !newAddress.city.trim() || !newAddress.state.trim() || !newAddress.zipCode.trim() || !newAddress.country.trim() || !newAddress.phoneNumber.trim()}
                   >
+                    {isSavingAddress ? <span className="animate-spin h-4 w-4 mr-2 border-t-2 border-b-2 border-white rounded-full"></span> : null}
                     Save Address
                   </button>
                 </div>
@@ -628,9 +734,12 @@ const CheckoutPage: React.FC = () => {
                 </span>
               </div>
             </div>
+            {orderError && <p className="text-red-600 text-sm mb-2" aria-live="polite">{orderError}</p>}
+            {emailWarning && <p className="text-yellow-600 text-sm mb-2" aria-live="polite">{emailWarning}</p>}
             <button 
               onClick={handlePlaceOrder}
-              className="w-full bg-primary hover:bg-primary-700 text-white font-bold py-2 px-4 rounded mt-6"
+              className="w-full py-3 px-4 bg-primary text-white rounded-lg font-bold text-lg hover:bg-primary-700 flex items-center justify-center"
+              disabled={isPlacingOrder}
             >
               Place Order
             </button>

@@ -77,7 +77,9 @@ const ProfilePage: React.FC = () => {
 
   // Get initials for the avatar
   const getInitials = () => {
-    if (!userData || !userData.displayName) return '';
+    if (!userData) return 'U';
+    if (!userData.displayName && userData.phoneNumber) return userData.phoneNumber.slice(-4); // last 4 digits
+    if (!userData.displayName) return 'U';
     const names = userData.displayName.split(' ');
     return names.map((name: string) => name.charAt(0).toUpperCase()).join('');
   };
@@ -100,8 +102,8 @@ const ProfilePage: React.FC = () => {
               <div className="h-24 w-24 rounded-full bg-primary-100 flex items-center justify-center text-primary text-2xl font-bold">
                 {getInitials()}
               </div>
-              <h2 className="mt-4 text-xl font-bold text-dark">{userData?.displayName || 'User'}</h2>
-              <p className="text-dark-500">{userData?.email || ''}</p>
+              <h2 className="mt-4 text-xl font-bold text-dark">{userData?.displayName || userData?.phoneNumber || 'User'}</h2>
+              <p className="text-dark-500">{userData?.email || 'Not provided'}</p>
               <p className="text-dark-500 mt-1">
                 Member since {userData?.createdAt ? formatDate(userData.createdAt) : 'N/A'}
               </p>
@@ -116,7 +118,7 @@ const ProfilePage: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-medium text-dark-500">Full Name</h3>
-                <p className="text-dark">{userData?.displayName || 'Not provided'}</p>
+                <p className="text-dark">{userData?.displayName || userData?.phoneNumber || 'Not provided'}</p>
               </div>
               <div>
                 <h3 className="text-sm font-medium text-dark-500">Email Address</h3>

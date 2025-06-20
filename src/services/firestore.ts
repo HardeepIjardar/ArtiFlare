@@ -88,6 +88,7 @@ export interface UserData {
     country: string;
     isDefault: boolean;
     label?: string | null; // e.g., "Home", "Work", etc. - NOW ALLOWS NULL
+    phoneNumber?: string;
   }[];
   bio?: string;
   companyName?: string;
@@ -142,7 +143,8 @@ const addressSchema = z.object({
   zipCode: z.string().min(1, 'Zip code is required'),
   country: z.string().min(1, 'Country is required'),
   isDefault: z.boolean(),
-  label: z.string().nullable().optional() // ALLOW NULL FOR OPTIONAL LABEL
+  label: z.string().nullable().optional(), // ALLOW NULL FOR OPTIONAL LABEL
+  phoneNumber: z.string().optional(),
 });
 
 const userSchema = z.object({
