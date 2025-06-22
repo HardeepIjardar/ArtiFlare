@@ -221,7 +221,11 @@ const MainLayout: React.FC = () => {
                         onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                       >
                         <FaUserCircle className="h-8 w-8 text-primary" />
-                        <span className="ml-2 text-dark">{firestoreUser?.phoneNumber || getDisplayName(firestoreUser) || 'User'}</span>
+                        <span className="ml-2 text-dark">{
+                          firestoreUser?.displayName && !firestoreUser.displayName.startsWith('User')
+                            ? firestoreUser.displayName
+                            : (firestoreUser?.phoneNumber || 'User')
+                        }</span>
                       </button>
                       
                       {isProfileMenuOpen && (
