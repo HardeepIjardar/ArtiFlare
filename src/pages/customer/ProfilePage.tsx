@@ -5,7 +5,7 @@ import { getUserData } from '../../services/firestore';
 import ChangePassword from '../../components/auth/ChangePassword';
 import type { UserData } from '../../services/firestore';
 import Modal from '../../components/common/Modal';
-import { getErrorMessage } from '../../utils/errorHandling';
+import { getErrorMessage, getDisplayName, getInitials } from '../../utils/errorHandling';
 
 const ProfilePage: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -75,15 +75,6 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  // Get initials for the avatar
-  const getInitials = () => {
-    if (!userData) return 'U';
-    if (!userData.displayName && userData.phoneNumber) return userData.phoneNumber.slice(-4); // last 4 digits
-    if (!userData.displayName) return 'U';
-    const names = userData.displayName.split(' ');
-    return names.map((name: string) => name.charAt(0).toUpperCase()).join('');
-  };
-
   // Format creation date
   const formatDate = (timestamp: any) => {
     if (!timestamp) return 'N/A';
@@ -100,9 +91,9 @@ const ProfilePage: React.FC = () => {
           <div className="md:w-1/3 p-6 bg-gray-50 border-b md:border-b-0 md:border-r border-gray-200">
             <div className="flex flex-col items-center">
               <div className="h-24 w-24 rounded-full bg-primary-100 flex items-center justify-center text-primary text-2xl font-bold">
-                {getInitials()}
+                {getInitials(userData)}
               </div>
-              <h2 className="mt-4 text-xl font-bold text-dark">{userData?.displayName || userData?.phoneNumber || 'User'}</h2>
+              <h2 className="mt-4 text-xl font-bold text-dark">{getDisplayName(userData)}</h2>
               <p className="text-dark-500">{userData?.email || 'Not provided'}</p>
               <p className="text-dark-500 mt-1">
                 Member since {userData?.createdAt ? formatDate(userData.createdAt) : 'N/A'}
@@ -115,10 +106,29 @@ const ProfilePage: React.FC = () => {
           
           <div className="md:w-2/3 p-6">
             <h2 className="text-lg font-bold text-dark mb-4">Account Information</h2>
+            
+            {/* Show completion message for basic profiles */}
+            {userData && (!userData.displayName || userData.displayName === 'User' || userData.displayName.startsWith('User ')) && (
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-md mb-6">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-blue-700">
+                      <strong>Complete your profile!</strong> Add your name and other details to personalize your experience.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-medium text-dark-500">Full Name</h3>
-                <p className="text-dark">{userData?.displayName || userData?.phoneNumber || 'Not provided'}</p>
+                <p className="text-dark">{getDisplayName(userData)}</p>
               </div>
               <div>
                 <h3 className="text-sm font-medium text-dark-500">Email Address</h3>

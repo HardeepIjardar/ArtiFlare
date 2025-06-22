@@ -4,6 +4,7 @@ import { FaUserCircle } from 'react-icons/fa';
 import Logo from '../components/Logo';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserData } from '../services/firestore';
+import { getDisplayName } from '../utils/errorHandling';
 
 const ArtisanLayout: React.FC = () => {
   const { currentUser } = useAuth();
@@ -53,11 +54,9 @@ const ArtisanLayout: React.FC = () => {
                   onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                 >
                   <FaUserCircle className="h-8 w-8 text-primary" />
-                  {firestoreUser?.userData?.displayName || firestoreUser?.userData?.companyName ? (
-                    <span className="ml-2 text-dark font-semibold">
-                      {firestoreUser.userData?.displayName || firestoreUser.userData?.companyName}
-                    </span>
-                  ) : null}
+                  <span className="ml-2 text-dark font-semibold">
+                    {firestoreUser?.userData?.companyName || getDisplayName(firestoreUser?.userData)}
+                  </span>
                 </button>
                 
                 {isProfileMenuOpen && (

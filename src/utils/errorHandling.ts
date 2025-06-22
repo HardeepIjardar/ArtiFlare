@@ -70,4 +70,50 @@ export const getErrorMessage = (error: unknown): string => {
   }
 
   return 'An unexpected error occurred.';
+};
+
+// Utility functions for phone authentication
+export const formatPhoneNumber = (phoneNumber: string): string => {
+  if (!phoneNumber) return '';
+  
+  // Remove all non-digit characters
+  const cleaned = phoneNumber.replace(/\D/g, '');
+  
+  // Format based on length
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+  } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+    return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+  }
+  
+  return phoneNumber; // Return original if can't format
+};
+
+export const getDisplayName = (userData: { displayName?: string; phoneNumber?: string } | null): string => {
+  if (!userData) return 'User';
+  
+  if (userData.displayName && userData.displayName !== 'User' && !userData.displayName.startsWith('User ')) {
+    return userData.displayName;
+  }
+  
+  if (userData.phoneNumber) {
+    return formatPhoneNumber(userData.phoneNumber);
+  }
+  
+  return 'User';
+};
+
+export const getInitials = (userData: { displayName?: string; phoneNumber?: string } | null): string => {
+  if (!userData) return 'U';
+  
+  if (userData.displayName && userData.displayName !== 'User' && !userData.displayName.startsWith('User ')) {
+    const names = userData.displayName.split(' ');
+    return names.map((name: string) => name.charAt(0).toUpperCase()).join('');
+  }
+  
+  if (userData.phoneNumber) {
+    return userData.phoneNumber.slice(-4); // last 4 digits
+  }
+  
+  return 'U';
 }; 

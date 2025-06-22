@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, createContext, useCallback } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { FaUserCircle, FaShoppingCart } from 'react-icons/fa';
+import { FaUserCircle, FaShoppingCart, FaSearch } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import Logo from '../components/Logo';
+import { getDisplayName } from '../utils/errorHandling';
 
 export const SearchContext = createContext<any>(null);
 
@@ -220,9 +221,7 @@ const MainLayout: React.FC = () => {
                         onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                       >
                         <FaUserCircle className="h-8 w-8 text-primary" />
-                        {firestoreUser?.displayName && (
-                          <span className="ml-2 text-dark">{firestoreUser.displayName}</span>
-                        )}
+                        <span className="ml-2 text-dark">{getDisplayName(firestoreUser)}</span>
                       </button>
                       
                       {isProfileMenuOpen && (

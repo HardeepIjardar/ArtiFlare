@@ -84,13 +84,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Fetch Firestore user data when auth state changes
         let result = await getUserData(user.uid);
         if (!result.userData) {
-          // User doc missing, create it
+          // User doc missing, create it with proper phone number extraction
+          const phoneNumber = user.phoneNumber || undefined;
+          const displayName = user.displayName || (phoneNumber ? `User ${phoneNumber.slice(-4)}` : 'User');
+          
           const minimalUser = {
-            displayName: user.displayName || '',
+            displayName: displayName,
             email: user.email || '',
             role: 'customer' as 'customer',
             photoURL: user.photoURL || undefined,
-            phoneNumber: user.phoneNumber || undefined,
+            phoneNumber: phoneNumber,
           };
           await createUser(user.uid, minimalUser);
           // Fetch again after creation

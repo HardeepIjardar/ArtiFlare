@@ -207,10 +207,14 @@ const RegisterPage: React.FC = () => {
       // Check if Firestore user document exists
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (!userDoc.exists()) {
-        // Create user document with phone number as display name
+        // Extract phone number properly from Firebase User
+        const phoneNumber = user.phoneNumber || undefined;
+        const displayName = user.displayName || (phoneNumber ? `User ${phoneNumber.slice(-4)}` : 'User');
+        
+        // Create user document with proper phone number and display name
         await createUser(user.uid, {
-          displayName: user.phoneNumber || 'User',
-          phoneNumber: user.phoneNumber || undefined,
+          displayName: displayName,
+          phoneNumber: phoneNumber,
           role: userType === 'buyer' ? 'customer' : 'artisan',
           companyName: userType === 'artisan' ? form.companyName : undefined,
           createdAt: Timestamp.now(),
@@ -220,7 +224,7 @@ const RegisterPage: React.FC = () => {
       // Redirect based on role
       await handleRedirect({
         uid: user.uid,
-        displayName: user.phoneNumber || 'User',
+        displayName: user.displayName || (user.phoneNumber ? `User ${user.phoneNumber.slice(-4)}` : 'User'),
         email: user.email || '',
         role: userType === 'buyer' ? 'customer' : 'artisan',
         companyName: userType === 'artisan' ? form.companyName : undefined,

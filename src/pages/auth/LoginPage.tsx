@@ -82,10 +82,14 @@ const LoginPage: React.FC = () => {
       // Check if Firestore user document exists
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (!userDoc.exists()) {
-        // Create user document with phone number as display name
+        // Extract phone number properly from Firebase User
+        const phoneNumber = user.phoneNumber || undefined;
+        const displayName = user.displayName || (phoneNumber ? `User ${phoneNumber.slice(-4)}` : 'User');
+        
+        // Create user document with proper phone number and display name
         await createUser(user.uid, {
-          displayName: user.phoneNumber || 'User',
-          phoneNumber: user.phoneNumber || undefined,
+          displayName: displayName,
+          phoneNumber: phoneNumber,
           role: 'customer',
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now()
