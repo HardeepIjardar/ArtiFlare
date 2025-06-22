@@ -5,7 +5,7 @@ import { User } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { PhoneAuth } from '../../components/auth';
-import { createUser } from '../../services/firestore';
+import { createUser, getUserData } from '../../services/firestore';
 import { Timestamp } from 'firebase/firestore';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { getErrorMessage } from '../../utils/errorHandling';
@@ -85,7 +85,6 @@ const LoginPage: React.FC = () => {
         // Extract phone number properly from Firebase User
         const phoneNumber = user.phoneNumber || undefined;
         const displayName = user.displayName || (phoneNumber ? `User ${phoneNumber.slice(-4)}` : 'User');
-        
         // Create user document with proper phone number and display name
         await createUser(user.uid, {
           displayName: displayName,
@@ -94,6 +93,18 @@ const LoginPage: React.FC = () => {
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now()
         });
+      }
+      // Wait for Firestore user document to exist (polling)
+      let attempts = 0;
+      let userData = null;
+      while (attempts < 5 && !userData) {
+        const result = await getUserData(user.uid);
+        if (result.userData) {
+          userData = result.userData;
+        } else {
+          await new Promise(res => setTimeout(res, 500)); // wait 0.5s
+          attempts++;
+        }
       }
       await handleRedirect(user);
     } catch (error: any) {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { createUser, UserData } from '../../services/firestore';
+import { createUser, UserData, getUserData } from '../../services/firestore';
 import { UserProfileSetup, PhoneAuth } from '../../components/auth';
 import { User, updateProfile } from 'firebase/auth';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
@@ -210,7 +210,6 @@ const RegisterPage: React.FC = () => {
         // Extract phone number properly from Firebase User
         const phoneNumber = user.phoneNumber || undefined;
         const displayName = user.displayName || (phoneNumber ? `User ${phoneNumber.slice(-4)}` : 'User');
-        
         // Create user document with proper phone number and display name
         await createUser(user.uid, {
           displayName: displayName,
@@ -220,6 +219,18 @@ const RegisterPage: React.FC = () => {
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now()
         });
+      }
+      // Wait for Firestore user document to exist (polling)
+      let attempts = 0;
+      let userData = null;
+      while (attempts < 5 && !userData) {
+        const result = await getUserData(user.uid);
+        if (result.userData) {
+          userData = result.userData;
+        } else {
+          await new Promise(res => setTimeout(res, 500)); // wait 0.5s
+          attempts++;
+        }
       }
       // Redirect based on role
       await handleRedirect({
