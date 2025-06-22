@@ -75,6 +75,29 @@ const ProfilePage: React.FC = () => {
     );
   }
 
+  if (
+    userData &&
+    userData.phoneNumber &&
+    (!userData.displayName || userData.displayName.startsWith('User')) &&
+    (!userData.email || userData.email === '') &&
+    (!userData.addresses || userData.addresses.length === 0)
+  ) {
+    // Show only phone number and prompt to update profile
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-3xl font-bold text-dark mb-6">Your Profile</h1>
+        <div className="bg-white shadow rounded-lg overflow-hidden mb-6 p-8 flex flex-col items-center">
+          <div className="h-24 w-24 rounded-full bg-primary-100 flex items-center justify-center text-primary text-2xl font-bold mb-4">
+            <span role="img" aria-label="User">👤</span>
+          </div>
+          <h2 className="text-xl font-bold text-dark mb-2">{userData.phoneNumber}</h2>
+          <p className="text-dark-500 mb-4">No profile details found. Please update your profile.</p>
+          <Link to="/profile/edit" className="bg-primary text-white px-6 py-2 rounded-md hover:bg-primary-700 transition">Update Profile</Link>
+        </div>
+      </div>
+    );
+  }
+
   // Format creation date
   const formatDate = (timestamp: any) => {
     if (!timestamp) return 'N/A';
