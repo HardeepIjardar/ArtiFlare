@@ -79,39 +79,18 @@ const LoginPage: React.FC = () => {
   const handlePhoneAuthSuccess = async (user: User) => {
     try {
       setIsLoading(true);
-      // Check if Firestore user document exists
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (!userDoc.exists()) {
-        // Extract phone number properly from Firebase User
-        const phoneNumber = user.phoneNumber || undefined;
-        const displayName = user.displayName || (phoneNumber ? `User ${phoneNumber.slice(-4)}` : 'User');
-        // Create user document with proper phone number and display name
-        await createUser(user.uid, {
-          displayName: displayName,
-          phoneNumber: phoneNumber,
-          role: 'customer',
-          createdAt: Timestamp.now(),
-          updatedAt: Timestamp.now()
-        });
-      }
-      // Wait for Firestore user document to exist (polling)
-      let attempts = 0;
-      let userData = null;
-      while (attempts < 5 && !userData) {
-        const result = await getUserData(user.uid);
-        if (result.userData) {
-          userData = result.userData;
-        } else {
-          await new Promise(res => setTimeout(res, 500)); // wait 0.5s
-          attempts++;
-        }
-      }
+      // The user document is now created within PhoneAuth.tsx, 
+      // so we just need to redirect.
       await handleRedirect(user);
     } catch (error: any) {
       setError(error.message || 'Failed to complete login');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleTogglePassword = () => {
+    setShowPassword((v) => !v);
   };
 
   return (
@@ -169,7 +148,7 @@ const LoginPage: React.FC = () => {
                   type="button"
                   className="absolute right-3 top-12 transform -translate-y-1/2 text-gray-400 hover:text-primary focus:outline-none"
                   tabIndex={-1}
-                  onClick={() => setShowPassword((v) => !v)}
+                  onClick={handleTogglePassword}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <FaEyeSlash /> : <FaEye />}

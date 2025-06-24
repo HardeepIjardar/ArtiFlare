@@ -4,7 +4,8 @@ import { RecaptchaVerifier } from 'firebase/auth';
 import { auth } from '../../services/firebase';
 import { PhoneAuthProps } from '../../types/auth';
 import { createUser } from '../../services/firestore';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, doc, getDoc } from 'firebase/firestore';
+import { db } from '../../services/firebase';
 
 // Country codes data with ISO codes for mapping
 const countryCodes = [
@@ -279,17 +280,24 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
       if (result.error) {
         onError?.(result.error);
       } else if (result.user) {
-        // Immediately create Firestore user document after phone verification
         const user = result.user;
-        const phoneNumber = user.phoneNumber || undefined;
-        const displayName = user.displayName || (phoneNumber ? `User ${phoneNumber.slice(-4)}` : 'User');
-        await createUser(user.uid, {
-          displayName: displayName,
-          phoneNumber: phoneNumber,
-          role: 'customer',
-          createdAt: Timestamp.now(),
-          updatedAt: Timestamp.now()
-        });
+        
+        // Check if the user document already exists
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        
+        if (!userDoc.exists()) {
+          // If the document doesn't exist, create it
+          const phoneNumber = user.phoneNumber || undefined;
+          const displayName = user.displayName || (phoneNumber ? `User ${phoneNumber.slice(-4)}` : 'User');
+          await createUser(user.uid, {
+            displayName: displayName,
+            phoneNumber: phoneNumber,
+            role: 'customer',
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now()
+          });
+        }
+        
         onSuccess?.(user);
       }
     } catch (err: any) {

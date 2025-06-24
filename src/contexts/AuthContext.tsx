@@ -25,6 +25,8 @@ import {
 } from '../services/firebase';
 import { auth } from '../services/firebase';
 import { getUserData, UserData, createUser } from '../services/firestore';
+import { query, collection, getDocs, where } from 'firebase/firestore';
+import { db } from '../services/firebase';
 
 // Define the shape of our context
 interface AuthContextType {
@@ -83,6 +85,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (user) {
         // Fetch Firestore user data when auth state changes
         let result = await getUserData(user.uid);
+
+        // If user data is not found by UID, try to find by phone number
+        if (!result.userData && user.phoneNumber) {
+          const q = query(collection(db, 'users'), where('phoneNumber', '==', user.phoneNumber));
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+            const userDoc = querySnapshot.docs[0];
+            result = { userData: userDoc.data() as UserData, error: null };
+          }
+        }
+        
         if (!result.userData) {
           // User doc missing, create it with proper phone number extraction
           const phoneNumber = user.phoneNumber || undefined;
