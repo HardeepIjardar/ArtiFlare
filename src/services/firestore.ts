@@ -150,7 +150,7 @@ const addressSchema = z.object({
 const userSchema = z.object({
   uid: z.string(),
   displayName: z.string().min(1, 'Display name is required'),
-  email: z.string().email('Invalid email'),
+  email: z.string().email('Invalid email').or(z.literal('')),
   photoURL: z.string().optional(),
   phoneNumber: z.string().optional(),
   role: z.enum(['customer', 'artisan', 'admin']),

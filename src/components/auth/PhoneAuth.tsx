@@ -281,23 +281,28 @@ export const PhoneAuth: React.FC<PhoneAuthProps> = ({ onSuccess, onError, name }
         onError?.(result.error);
       } else if (result.user) {
         const user = result.user;
-        
-        // Check if the user document already exists
+        // Debug logging before user doc check
+        console.log('[PhoneAuth] Checking if user doc exists for UID:', user.uid);
         const userDoc = await getDoc(doc(db, 'users', user.uid));
-        
         if (!userDoc.exists()) {
-          // If the document doesn't exist, create it
           const phoneNumber = user.phoneNumber || undefined;
           const displayName = user.displayName || (phoneNumber ? `User ${phoneNumber.slice(-4)}` : 'User');
-          await createUser(user.uid, {
-            displayName: displayName,
-            phoneNumber: phoneNumber,
-            role: 'customer',
-            createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now()
-          });
+          try {
+            console.log('[PhoneAuth] Creating user doc for UID:', user.uid, { displayName, phoneNumber });
+            await createUser(user.uid, {
+              displayName: displayName,
+              phoneNumber: phoneNumber,
+              role: 'customer',
+              createdAt: Timestamp.now(),
+              updatedAt: Timestamp.now()
+            });
+            console.log('[PhoneAuth] User doc created successfully for UID:', user.uid);
+          } catch (err) {
+            console.error('[PhoneAuth] Error creating user doc:', err);
+          }
+        } else {
+          console.log('[PhoneAuth] User doc already exists for UID:', user.uid);
         }
-        
         onSuccess?.(user);
       }
     } catch (err: any) {
