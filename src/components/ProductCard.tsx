@@ -129,9 +129,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <h3 className="font-semibold text-dark text-base leading-tight truncate mb-1" title={product.name}>{product.name}</h3>
         <p className="text-dark-400 text-xs mb-2 truncate">by {artisanName}</p>
         <div className="flex items-center justify-between mb-3">
-          <span className="text-primary font-bold text-lg">
-            {formatPrice(convertPrice(product.price, product.currency || 'INR'))}
-          </span>
+          {product.discountedPrice && product.discountedPrice < product.price ? (
+            <>
+              <span className="text-primary font-bold text-lg">
+                {formatPrice(convertPrice(product.discountedPrice, product.currency || 'INR'))}
+              </span>
+              <span className="text-dark-400 text-base line-through ml-2">
+                {formatPrice(convertPrice(product.price, product.currency || 'INR'))}
+              </span>
+            </>
+          ) : (
+            <span className="text-primary font-bold text-lg">
+              {formatPrice(convertPrice(product.price, product.currency || 'INR'))}
+            </span>
+          )}
           {showQuantitySelector ? (
             <div className="flex items-center space-x-1 bg-gray-100 rounded px-2 py-1">
               <button

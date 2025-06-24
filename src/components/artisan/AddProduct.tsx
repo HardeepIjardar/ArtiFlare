@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { createProduct, ProductData } from '../../services/firestore';
 import { uploadMultipleImages } from '../../services/storage';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const AddProduct: React.FC = () => {
   const { currentUser } = useAuth();
+  const { userCurrency } = useCurrency();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -63,7 +65,7 @@ const AddProduct: React.FC = () => {
         materials: form.materials.split(',').map(material => material.trim()).filter(material => material),
         occasion: form.occasion || undefined,
         images: form.images,
-        currency: 'USD',
+        currency: userCurrency,
         attributes: {},
         createdAt: new Date(),
         updatedAt: new Date()
