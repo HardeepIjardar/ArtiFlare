@@ -162,7 +162,7 @@ const AddProduct: React.FC = () => {
           
           <div>
             <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-              Price ($)*
+              Price (₹)*
             </label>
             <input
               id="price"
@@ -179,7 +179,7 @@ const AddProduct: React.FC = () => {
           
           <div>
             <label htmlFor="discountedPrice" className="block text-sm font-medium text-gray-700 mb-1">
-              Discounted Price ($)
+              Discounted Price (₹)
             </label>
             <input
               id="discountedPrice"

@@ -151,7 +151,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ onSuccess, onCancel }) 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
             <label htmlFor="price" className="block text-sm font-medium text-dark-700">
-              Price ($)
+              Price (₹)
             </label>
             <input
               type="number"
