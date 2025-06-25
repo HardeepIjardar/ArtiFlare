@@ -19,7 +19,8 @@ import {
   QueryDocumentSnapshot,
   startAfter,
   Query,
-  getCountFromServer
+  getCountFromServer,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { z } from 'zod';
@@ -222,6 +223,7 @@ const orderSchema = z.object({
   id: z.string().optional(), // Make ID optional as it's typically the document ID
   userId: z.string(),
   items: z.array(orderItemSchema).min(1, 'Order must contain at least one item'),
+  artisanIds: z.array(z.string()),
   total: z.number().positive(),
   status: z.enum(['pending', 'processing', 'shipped', 'delivered', 'cancelled']),
   createdAt: z.union([z.instanceof(Timestamp), z.instanceof(Date)]).optional(),
@@ -594,6 +596,10 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'u
     const newOrderRef = doc(collection(db, 'orders'));
     await setDoc(newOrderRef, {
       ...removeUndefined(orderData),
+      // Ensure artisanIds is present at the root (for legacy or future-proofing)
+      artisanIds: Array.isArray(orderData.artisanIds)
+        ? orderData.artisanIds
+        : Array.from(new Set((orderData.items || []).map((item: any) => item.artisanId))),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -621,6 +627,7 @@ export const getOrderById = async (orderId: string) => {
             ...(item.updatedAt && { updatedAt: item.updatedAt instanceof Timestamp ? item.updatedAt.toDate() : item.updatedAt }),
           };
         }),
+        artisanIds: data.artisanIds || Array.from(new Set(data.items.map((item: any) => item.artisanId))),
         total: data.total,
         status: data.status,
         shippingAddress: data.shippingAddress,
@@ -670,6 +677,7 @@ export const getUserOrders = async (userId: string) => {
         id: doc.id,
         userId: data.userId,
         items: data.items,
+        artisanIds: data.artisanIds || Array.from(new Set(data.items.map((item: any) => item.artisanId))),
         total: data.total,
         status: data.status,
         shippingAddress: data.shippingAddress,
@@ -697,7 +705,7 @@ export const getArtisanOrders = async (artisanId: string) => {
     const ordersRef = collection(db, 'orders');
     const q = query(
       ordersRef,
-      where('items', 'array-contains', { artisanId }),
+      where('artisanIds', 'array-contains', artisanId),
       orderBy('createdAt', 'desc')
     );
     
@@ -709,6 +717,7 @@ export const getArtisanOrders = async (artisanId: string) => {
         id: doc.id,
         userId: data.userId,
         items: data.items,
+        artisanIds: data.artisanIds || Array.from(new Set(data.items.map((item: any) => item.artisanId))),
         total: data.total,
         status: data.status,
         shippingAddress: data.shippingAddress,
@@ -725,11 +734,7 @@ export const getArtisanOrders = async (artisanId: string) => {
       };
     });
 
-    const filteredOrders = orders.filter(order => 
-      order.items.some(item => item.artisanId === artisanId)
-    );
-
-    return { orders: filteredOrders, error: null };
+    return { orders, error: null };
   } catch (error: unknown) {
     return { orders: [], error: handleError(error, 'getArtisanOrders') };
   }
@@ -996,6 +1001,10 @@ export const placeOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'up
     const newOrderRef = doc(collection(db, 'orders'));
     await setDoc(newOrderRef, {
       ...removeUndefined(orderData),
+      // Ensure artisanIds is present at the root (for legacy or future-proofing)
+      artisanIds: Array.isArray(orderData.artisanIds)
+        ? orderData.artisanIds
+        : Array.from(new Set((orderData.items || []).map((item: any) => item.artisanId))),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -1076,6 +1085,10 @@ export const processOrder = async (
       // 2. Prepare order data with server timestamps
       const orderToCreate = {
         ...removeUndefined(orderData),
+        // Ensure artisanIds is present at the root (for legacy or future-proofing)
+        artisanIds: Array.isArray(orderData.artisanIds)
+          ? orderData.artisanIds
+          : Array.from(new Set((orderData.items || []).map((item: any) => item.artisanId))),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -1125,4 +1138,38 @@ export const processOrder = async (
     }
     throw handleError(error, 'processOrder'); // Use existing handleError for other errors
   }
+};
+
+export const subscribeToArtisanOrders = (artisanId: string, onUpdate: (orders: Order[]) => void) => {
+  const ordersRef = collection(db, 'orders');
+  const q = query(
+    ordersRef,
+    where('artisanIds', 'array-contains', artisanId),
+    orderBy('createdAt', 'desc')
+  );
+  return onSnapshot(q, (snapshot) => {
+    const orders: Order[] = snapshot.docs.map(doc => {
+      const data = doc.data() as Order;
+      return {
+        id: doc.id,
+        userId: data.userId,
+        items: data.items,
+        artisanIds: data.artisanIds || Array.from(new Set(data.items.map((item: any) => item.artisanId))),
+        total: data.total,
+        status: data.status,
+        shippingAddress: data.shippingAddress,
+        paymentMethod: data.paymentMethod,
+        paymentStatus: data.paymentStatus,
+        shippingMethod: data.shippingMethod,
+        shippingCost: data.shippingCost,
+        ...(data.discount && { discount: data.discount }),
+        ...(data.tax && { tax: data.tax }),
+        ...(data.trackingNumber && { trackingNumber: data.trackingNumber }),
+        ...(data.notes && { notes: data.notes }),
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt,
+      };
+    });
+    onUpdate(orders);
+  });
 };

@@ -290,9 +290,13 @@ const CheckoutPage: React.FC = () => {
         return removeUndefined(orderItem); // Ensure individual order items are also cleaned
       });
 
+      // Collect unique artisanIds from orderItems
+      const artisanIds = Array.from(new Set(orderItems.map(item => item.artisanId)));
+
       const orderData = {
         userId: currentUser.uid,
         items: orderItems,
+        artisanIds,
         total: orderTotal,
         status: 'pending' as const,
         shippingAddress: cleanedShippingAddress,

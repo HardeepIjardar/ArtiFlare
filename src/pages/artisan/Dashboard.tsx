@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUserData, getArtisanOrders, getProductsByArtisan } from '../../services/firestore';
+import { getUserData, getArtisanOrders, getProductsByArtisan, subscribeToArtisanOrders } from '../../services/firestore';
 
 const Dashboard: React.FC = () => {
   const { currentUser } = useAuth();
@@ -19,8 +19,8 @@ const Dashboard: React.FC = () => {
           setDisplayName(data.userData.companyName || data.userData.displayName || 'Artisan');
         }
       });
-      // Fetch orders and products for stats
-      getArtisanOrders(currentUser.uid).then(async ({ orders }) => {
+      // Real-time orders subscription
+      const unsubscribe = subscribeToArtisanOrders(currentUser.uid, async (orders) => {
         setOrdersCount(orders.length);
         setPendingOrdersCount(orders.filter(order => order.status !== 'delivered' && order.status !== 'cancelled').length);
         // Sort by createdAt descending and take 5 most recent
@@ -43,6 +43,7 @@ const Dashboard: React.FC = () => {
       getProductsByArtisan(currentUser.uid).then(({ products }) => {
         setProductsCount(products.length);
       });
+      return () => unsubscribe();
     }
   }, [currentUser]);
 
