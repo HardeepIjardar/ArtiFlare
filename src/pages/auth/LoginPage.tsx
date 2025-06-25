@@ -53,8 +53,12 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await login(email, password);
-      navigate('/');
+      const result = await login(email, password);
+      if (result.user) {
+        await handleRedirect(result.user);
+      } else {
+        setError('Login failed. Please check your credentials.');
+      }
     } catch (err: unknown) {
       setError(getErrorMessage(err));
     } finally {
@@ -67,8 +71,12 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await googleLogin();
-      navigate('/');
+      const result = await googleLogin();
+      if (result.user) {
+        await handleRedirect(result.user);
+      } else {
+        setError('Google login failed.');
+      }
     } catch (err: unknown) {
       setError(getErrorMessage(err));
     } finally {

@@ -1,11 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUserData } from '../../services/firestore';
+import { getUserData, getArtisanOrders, getProductsByArtisan } from '../../services/firestore';
 
 const Dashboard: React.FC = () => {
   const { currentUser } = useAuth();
   const [displayName, setDisplayName] = React.useState<string>('Artisan');
+  const [ordersCount, setOrdersCount] = React.useState<number>(0);
+  const [pendingOrdersCount, setPendingOrdersCount] = React.useState<number>(0);
+  const [productsCount, setProductsCount] = React.useState<number>(0);
+  const [recentOrders, setRecentOrders] = React.useState<any[]>([]);
+  const [customerNames, setCustomerNames] = React.useState<{[userId: string]: string}>({});
 
   React.useEffect(() => {
     if (currentUser) {
@@ -13,6 +18,30 @@ const Dashboard: React.FC = () => {
         if (data?.userData) {
           setDisplayName(data.userData.companyName || data.userData.displayName || 'Artisan');
         }
+      });
+      // Fetch orders and products for stats
+      getArtisanOrders(currentUser.uid).then(async ({ orders }) => {
+        setOrdersCount(orders.length);
+        setPendingOrdersCount(orders.filter(order => order.status !== 'delivered' && order.status !== 'cancelled').length);
+        // Sort by createdAt descending and take 5 most recent
+        const sorted = [...orders].sort((a, b) => {
+          const aDate = a.createdAt instanceof Date ? a.createdAt : (a.createdAt && a.createdAt.toDate ? a.createdAt.toDate() : new Date(0));
+          const bDate = b.createdAt instanceof Date ? b.createdAt : (b.createdAt && b.createdAt.toDate ? b.createdAt.toDate() : new Date(0));
+          return bDate.getTime() - aDate.getTime();
+        });
+        const top5 = sorted.slice(0, 5);
+        setRecentOrders(top5);
+        // Fetch customer names for these orders
+        const userIds = Array.from(new Set(top5.map(order => order.userId)));
+        const names: {[userId: string]: string} = {};
+        await Promise.all(userIds.map(async (userId) => {
+          const res = await getUserData(userId);
+          names[userId] = res?.userData?.displayName || res?.userData?.companyName || 'Customer';
+        }));
+        setCustomerNames(names);
+      });
+      getProductsByArtisan(currentUser.uid).then(({ products }) => {
+        setProductsCount(products.length);
       });
     }
   }, [currentUser]);
@@ -28,8 +57,8 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow">
           <p className="text-dark-500 font-medium">Total Orders</p>
-          <p className="text-3xl font-bold text-dark mt-2">24</p>
-          <p className="text-sage-500 text-sm mt-2">+12% from last month</p>
+          <p className="text-3xl font-bold text-dark mt-2">{ordersCount}</p>
+          <p className="text-sage-500 text-sm mt-2">&nbsp;</p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <p className="text-dark-500 font-medium">Revenue</p>
@@ -38,13 +67,13 @@ const Dashboard: React.FC = () => {
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <p className="text-dark-500 font-medium">Pending Orders</p>
-          <p className="text-3xl font-bold text-primary mt-2">3</p>
+          <p className="text-3xl font-bold text-primary mt-2">{pendingOrdersCount}</p>
           <p className="text-primary text-sm mt-2">Needs attention</p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <p className="text-dark-500 font-medium">Product Listing</p>
-          <p className="text-3xl font-bold text-dark mt-2">12</p>
-          <p className="text-sage-500 text-sm mt-2">2 inactive</p>
+          <p className="text-3xl font-bold text-dark mt-2">{productsCount}</p>
+          <p className="text-sage-500 text-sm mt-2">&nbsp;</p>
         </div>
       </div>
       
@@ -78,39 +107,25 @@ const Dashboard: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              <tr>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">#1089</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">John Smith</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">{129.00.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
+              {recentOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-4 text-center text-dark-400">No recent orders found.</td>
+              </tr>
+              ) : (
+                recentOrders.map(order => (
+                  <tr key={order.id}>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">#{order.id}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">{customerNames[order.userId] || 'Customer'}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">{order.total?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
                 <td className="px-4 py-4 whitespace-nowrap">
-                  <span className="px-2 py-1 text-xs rounded-full bg-sage-100 text-sage-800">
-                    Shipped
+                      <span className={`px-2 py-1 text-xs rounded-full ${order.status === 'delivered' ? 'bg-green-100 text-green-800' : order.status === 'shipped' ? 'bg-sage-100 text-sage-800' : order.status === 'processing' ? 'bg-primary-100 text-primary-800' : order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : ''}`}>
+                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                   </span>
                 </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark-500">May 12, 2023</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-dark-500">{order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : ''}</td>
               </tr>
-              <tr>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">#1088</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">Sarah Jones</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">{79.99.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
-                <td className="px-4 py-4 whitespace-nowrap">
-                  <span className="px-2 py-1 text-xs rounded-full bg-primary-100 text-primary-800">
-                    Processing
-                  </span>
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark-500">May 11, 2023</td>
-              </tr>
-              <tr>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">#1087</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">Michael Brown</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">{159.00.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
-                <td className="px-4 py-4 whitespace-nowrap">
-                  <span className="px-2 py-1 text-xs rounded-full bg-sage-100 text-sage-800">
-                    Shipped
-                  </span>
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-dark-500">May 10, 2023</td>
-              </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
