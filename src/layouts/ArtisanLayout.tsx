@@ -7,7 +7,7 @@ import { getUserData } from '../services/firestore';
 import { getDisplayName } from '../utils/errorHandling';
 
 const ArtisanLayout: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const [firestoreUser, setFirestoreUser] = useState<any>(null);
@@ -70,9 +70,11 @@ const ArtisanLayout: React.FC = () => {
                     </Link>
                     <button
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => {
-                        // Add logout functionality here
+                      onClick={async () => {
+                        await logout();
                         setIsProfileMenuOpen(false);
+                        // Optionally, redirect to login page if needed
+                        // navigate('/login');
                       }}
                     >
                       Logout
