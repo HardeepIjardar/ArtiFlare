@@ -198,15 +198,11 @@ const CheckoutPage: React.FC = () => {
   };
 
   const shippingCost = (() => {
-    switch (selectedDeliveryOption) {
-      case 'standard':
-        return 5.99;
-      case 'express':
-        return 12.99;
-      case 'sos':
-        return 24.99;
-      default:
-        return 5.99; // Default to standard shipping
+    // New delivery charge structure based on subtotal
+    if (cartTotal < 500) {
+      return 50; // ₹50 for subtotal under ₹500
+    } else {
+      return 30; // ₹30 for subtotal above ₹500
     }
   })();
   const tax = cartTotal * 0.08; // 8% tax rate
@@ -302,7 +298,7 @@ const CheckoutPage: React.FC = () => {
         shippingAddress: cleanedShippingAddress,
         paymentMethod: selectedPaymentMethod,
         paymentStatus: 'pending' as const,
-        shippingMethod: selectedDeliveryOption,
+        shippingMethod: 'standard',
         shippingCost: shippingCost,
         tax: tax,
         discount: 0, // Ensure discount is always a number
@@ -630,58 +626,30 @@ const CheckoutPage: React.FC = () => {
           </div>
           
           <div className="bg-white shadow rounded-lg p-6 mb-6">
-            <h2 className="text-lg font-bold text-dark mb-4">Delivery Options</h2>
+            <h2 className="text-lg font-bold text-dark mb-4">Delivery Information</h2>
             <div className="space-y-4">
-              <div className="flex items-center p-4 border border-gray-200 rounded-lg">
-                <input
-                  id="standard"
-                  name="deliveryOption"
-                  type="radio"
-                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
-                  checked={selectedDeliveryOption === 'standard'}
-                  onChange={() => handleDeliveryOptionChange('standard')}
-                />
-                <label htmlFor="standard" className="ml-3 flex flex-col">
-                  <span className="text-dark font-medium">Standard Delivery</span>
-                  <span className="text-dark-500 text-sm">3-5 business days</span>
-                </label>
-                <span className="ml-auto text-dark">
-                  {formatPrice(convertPrice(5.99, 'INR'))}
-                </span>
+              <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-dark font-medium">Standard Delivery</span>
+                    <span className="text-dark-500 text-sm block">3-5 business days</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-dark font-medium">
+                      {formatPrice(convertPrice(shippingCost, 'INR'))}
+                    </span>
+                    <span className="text-dark-500 text-sm block">
+                      {cartTotal < 500 ? 'Orders under ₹500' : 'Orders above ₹500'}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center p-4 border border-gray-200 rounded-lg">
-                <input
-                  id="express"
-                  name="deliveryOption"
-                  type="radio"
-                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
-                  checked={selectedDeliveryOption === 'express'}
-                  onChange={() => handleDeliveryOptionChange('express')}
-                />
-                <label htmlFor="express" className="ml-3 flex flex-col">
-                  <span className="text-dark font-medium">Express Delivery</span>
-                  <span className="text-dark-500 text-sm">1-2 business days</span>
-                </label>
-                <span className="ml-auto text-dark">
-                  {formatPrice(convertPrice(12.99, 'INR'))}
-                </span>
-              </div>
-              <div className="flex items-center p-4 border border-primary-200 bg-primary-50 rounded-lg">
-                <input
-                  id="sos"
-                  name="deliveryOption"
-                  type="radio"
-                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
-                  checked={selectedDeliveryOption === 'sos'}
-                  onChange={() => handleDeliveryOptionChange('sos')}
-                />
-                <label htmlFor="sos" className="ml-3 flex flex-col">
-                  <span className="text-dark font-medium">SOS Delivery</span>
-                  <span className="text-primary text-sm">Delivered within 3 hours (select areas)</span>
-                </label>
-                <span className="ml-auto text-primary font-bold">
-                  {formatPrice(convertPrice(24.99, 'INR'))}
-                </span>
+              <div className="text-sm text-dark-600 bg-blue-50 p-3 rounded-lg">
+                <p><strong>Delivery Charges:</strong></p>
+                <ul className="list-disc list-inside mt-1">
+                  <li>₹50 for orders under ₹500</li>
+                  <li>₹30 for orders above ₹500</li>
+                </ul>
               </div>
             </div>
           </div>

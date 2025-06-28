@@ -29,7 +29,14 @@ const CartPage: React.FC = () => {
     if (cartItems.length > 0) fetchArtisanNames();
   }, [cartItems]);
 
-  const shippingCost = 5.99;
+  const shippingCost = (() => {
+    // New delivery charge structure based on subtotal
+    if (cartTotal < 500) {
+      return 50; // ₹50 for subtotal under ₹500
+    } else {
+      return 30; // ₹30 for subtotal above ₹500
+    }
+  })();
   const tax = cartTotal * 0.08; // 8% tax rate
   const orderTotal = cartTotal + shippingCost + tax;
 
