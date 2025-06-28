@@ -98,7 +98,7 @@ const ProductsPage: React.FC = () => {
       addToCart({
         id: product.id,
         name: product.name,
-        price: product.price,
+        price: product.discountedPrice && product.discountedPrice < product.price ? product.discountedPrice : product.price,
         quantity: 1,
         artisan: product.artisanId,
         image: product.images && product.images.length > 0 ? product.images[0] : '',
