@@ -158,7 +158,7 @@ const MainLayout: React.FC = () => {
       handleHeroSearch,
     }}>
       <div className="min-h-screen flex flex-col bg-[#f5f5f5]">
-        <header className="fixed top-0 left-0 right-0 z-10 bg-white shadow-sm border-b border-[#e0e0e0] transition-all duration-300">
+        <header className="fixed top-0 left-0 right-0 z-20 bg-white shadow-sm border-b border-[#e0e0e0] transition-all duration-300">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-20 items-center">
               <div className="flex-shrink-0 flex items-center">
