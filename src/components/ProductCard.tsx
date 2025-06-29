@@ -143,7 +143,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               {formatPrice(convertPrice(product.price, product.currency || 'INR'))}
             </span>
           )}
-          {showQuantitySelector ? (
+          {inCart ? (
             <div className="flex items-center space-x-1 bg-gray-100 rounded px-2 py-1">
               <button
                 onClick={e => { e.stopPropagation(); onDecrement(product.id); }}
@@ -164,7 +164,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           ) : (
             <button
               onClick={e => { e.stopPropagation(); onAddToCart(product.id); }}
-              className="bg-primary text-white font-medium px-3 py-1.5 rounded-lg hover:bg-primary-700 transition-colors flex items-center justify-center text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="bg-primary text-white font-medium px-3 py-1.5 rounded-lg hover:bg-primary-700 transition-colors flex items-center justify-center text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full"
             >
               <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.35 2.7A1 1 0 007.5 17h9a1 1 0 00.85-1.53L17 13M7 13V6h13" /></svg>
               Add to Cart

@@ -29,14 +29,7 @@ const CartPage: React.FC = () => {
     if (cartItems.length > 0) fetchArtisanNames();
   }, [cartItems]);
 
-  const shippingCost = (() => {
-    // New delivery charge structure based on subtotal
-    if (cartTotal < 500) {
-      return 50; // ₹50 for subtotal under ₹500
-    } else {
-      return 30; // ₹30 for subtotal above ₹500
-    }
-  })();
+  const shippingCost = 50; // Fixed delivery charge of ₹50
   const tax = cartTotal * 0.08; // 8% tax rate
   const orderTotal = cartTotal + shippingCost + tax;
 
@@ -84,7 +77,11 @@ const CartPage: React.FC = () => {
           <div className="md:w-2/3 p-6">
             <div className="divide-y divide-gray-200">
               {cartItems.map((item) => (
-                <div key={item.id} className="flex items-center py-4 border-b border-gray-200">
+                <div
+                  key={item.id}
+                  className="flex items-center py-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition"
+                  onClick={() => navigate(`/products/${item.id}`)}
+                >
                   <div className="h-24 w-24 bg-sage-100 rounded-md flex-shrink-0">
                     {item.image && <img src={item.image} alt={item.name} className="h-full w-full object-cover rounded-md" />}
                   </div>
@@ -102,7 +99,8 @@ const CartPage: React.FC = () => {
                       <div className="flex items-center space-x-2">
                         <button 
                           className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center"
-                          onClick={() => {
+                          onClick={e => {
+                            e.stopPropagation();
                             if (item.quantity <= 1) {
                               removeFromCart(item.id);
                             } else {
@@ -115,7 +113,10 @@ const CartPage: React.FC = () => {
                         <span className="text-dark">{item.quantity}</span>
                         <button 
                           className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={e => {
+                            e.stopPropagation();
+                            updateQuantity(item.id, item.quantity + 1);
+                          }}
                         >
                           <span>+</span>
                         </button>
@@ -127,7 +128,10 @@ const CartPage: React.FC = () => {
                   </div>
                   <button 
                     className="ml-4 text-dark-400 hover:text-dark-700"
-                    onClick={() => removeFromCart(item.id)}
+                    onClick={e => {
+                      e.stopPropagation();
+                      removeFromCart(item.id);
+                    }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
