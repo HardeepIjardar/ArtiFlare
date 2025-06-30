@@ -17,7 +17,7 @@ const ProductDetailPage: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useAuth();
+  const { currentUser, firestoreUser } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewLoading, setReviewLoading] = useState(true);
   const [reviewError, setReviewError] = useState<string | null>(null);
@@ -174,7 +174,7 @@ const ProductDetailPage: React.FC = () => {
       const reviewData = {
         productId: product.id,
         userId: currentUser.uid,
-        userName: currentUser.displayName || 'User',
+        userName: firestoreUser?.displayName || currentUser.displayName || 'User',
         rating: reviewRating,
         comment: reviewText,
       };
