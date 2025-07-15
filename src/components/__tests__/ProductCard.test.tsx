@@ -40,6 +40,9 @@ const mockProps = {
   onAddToCart: jest.fn(),
   onIncrement: jest.fn(),
   onDecrement: jest.fn(),
+  onRemoveFromCart: jest.fn(),
+  onUpdateQuantity: jest.fn(),
+  onToggleWishlist: jest.fn(),
 };
 
 const renderWithProviders = (component: React.ReactNode) => {
@@ -64,8 +67,8 @@ describe('ProductCard', () => {
     
     expect(screen.getByText('Test Product')).toBeInTheDocument();
     expect(screen.getByText('by Test Artisan')).toBeInTheDocument();
-    expect(screen.getByText('Add to Cart')).toBeInTheDocument();
-    expect(screen.getByText('View Details')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /View Details/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Add to Cart/i })).toBeInTheDocument();
   });
 
   it('calls onAddToCart when Add to Cart button is clicked', () => {

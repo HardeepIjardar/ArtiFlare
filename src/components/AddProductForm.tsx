@@ -22,7 +22,8 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ onSuccess, onCancel }) 
     materials: '',
     occasion: '',
     tags: '',
-    images: [] as string[]
+    images: [] as string[],
+    sosDelivery: false,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -68,7 +69,8 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ onSuccess, onCancel }) 
         occasion: formData.occasion || undefined,
         currency: 'USD',
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        sosDelivery: formData.sosDelivery,
       };
 
       const { error } = await createProduct(productData);
@@ -308,6 +310,19 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ onSuccess, onCancel }) 
           />
           <label htmlFor="isCustomizable" className="ml-2 block text-sm text-dark-700">
             This product can be customized
+          </label>
+        </div>
+        <div className="flex items-center mt-2">
+          <input
+            type="checkbox"
+            id="sosDelivery"
+            name="sosDelivery"
+            checked={formData.sosDelivery}
+            onChange={handleChange}
+            className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+          />
+          <label htmlFor="sosDelivery" className="ml-2 block text-sm text-dark-700">
+            SOS delivery
           </label>
         </div>
 

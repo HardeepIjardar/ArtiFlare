@@ -128,13 +128,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
       <div className="flex-1 flex flex-col justify-between">
         <h3 className="font-semibold text-dark text-base leading-tight truncate mb-1" title={product.name}>{product.name}</h3>
         <p className="text-dark-400 text-xs mb-2 truncate">by {artisanName}</p>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center mb-3 gap-2">
           {product.discountedPrice && product.discountedPrice < product.price ? (
             <>
               <span className="text-primary font-bold text-lg">
                 {formatPrice(convertPrice(product.discountedPrice, product.currency || 'INR'))}
               </span>
-              <span className="text-dark-400 text-base line-through ml-2">
+              <span className="text-dark-400 text-base line-through">
                 {formatPrice(convertPrice(product.price, product.currency || 'INR'))}
               </span>
             </>
@@ -143,6 +143,22 @@ const ProductCard: React.FC<ProductCardProps> = ({
               {formatPrice(convertPrice(product.price, product.currency || 'INR'))}
             </span>
           )}
+          {product.inventory > 0 && product.inventory < 10 && (
+            <span className="ml-auto text-xs text-red-500 font-medium">Only {product.inventory} left in stock</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            onClick={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              onAddToCart(product.id);
+              navigate('/checkout');
+            }}
+            className="flex-1 text-secondary font-medium py-1.5 rounded-lg border border-secondary hover:underline transition-colors text-sm focus:outline-none focus:ring-1 focus:ring-secondary"
+          >
+            Checkout
+          </button>
           {inCart ? (
             <div className="flex items-center space-x-1 bg-gray-100 rounded px-2 py-1">
               <button
@@ -164,23 +180,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
           ) : (
             <button
               onClick={e => { e.stopPropagation(); onAddToCart(product.id); }}
-              className="bg-primary text-white font-medium px-3 py-1.5 rounded-lg hover:bg-primary-700 transition-colors flex items-center justify-center text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full"
+              className="bg-primary text-white font-medium px-3 py-1.5 rounded-lg hover:bg-primary-700 transition-colors flex items-center justify-center text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.35 2.7A1 1 0 007.5 17h9a1 1 0 00.85-1.53L17 13M7 13V6h13" /></svg>
               Add to Cart
             </button>
           )}
         </div>
-        <button
-          onClick={e => { 
-            e.preventDefault();
-            e.stopPropagation(); 
-            navigate(`/products/${product.id}`);
-          }}
-          className="w-full text-secondary font-medium py-1.5 rounded-lg hover:underline transition-colors text-sm focus:outline-none focus:ring-1 focus:ring-secondary"
-        >
-          View Details
-        </button>
       </div>
     </div>
   );

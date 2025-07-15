@@ -41,4 +41,5 @@ export interface Product {
     size?: boolean;
     material?: boolean;
   };
+  sosDelivery?: boolean;
 }

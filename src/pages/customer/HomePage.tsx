@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { FaBirthdayCake, FaWineGlassAlt, FaHeart, FaSeedling } from 'react-icons/fa';
+import { FaBirthdayCake, FaWineGlassAlt, FaHeart, FaSeedling, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { getProducts, getUserData } from '../../services/firestore';
 import { Product } from '../../types/product';
 import { useCart } from '../../contexts/CartContext';
@@ -8,6 +8,7 @@ import ProductCard from '../../components/ProductCard';
 import { SearchContext } from '../../layouts/MainLayout';
 import { getErrorMessage } from '../../utils/errorHandling';
 import { Timestamp } from 'firebase/firestore';
+import SOSProductCard from '../../components/SOSProductCard';
 
 // Hero Section with Search bar
 const HeroSection = () => {
@@ -110,30 +111,75 @@ const OccasionsSection = React.forwardRef<HTMLDivElement>((props, ref) => (
 ));
 
 // SOS Gifts Section
-const SOSGiftsSection = () => (
-  <div className="px-4 sm:px-6 lg:px-8 mt-12">
-    <div className="max-w-7xl mx-auto">
-      <div className="bg-primary bg-opacity-10 rounded-lg p-6">
-        <div className="md:flex justify-between items-start">
-          <div className="mb-4 md:mb-0">
-            <h2 className="text-xl sm:text-2xl font-bold text-primary mb-2">SOS Gifts</h2>
-            <p className="text-dark-600">Last-minute gifts delivered within hours</p>
-          </div>
-          <div className="bg-white border border-[#e0e0e0] rounded-lg p-4 md:w-96">
-            <div className="flex">
-              <div className="h-20 w-20 bg-sand-300 rounded flex-shrink-0"></div>
-              <div className="ml-4 flex-grow">
-                <h3 className="font-bold text-dark text-sm">Express Flower Bouquet</h3>
-                <p className="text-dark-500 text-sm">Delivery in 3 hours</p>
-                <p className="text-primary font-bold mt-2">{(49).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
+const SOSGiftsSection: React.FC<{ sosProducts: Product[] }> = ({ sosProducts }) => {
+  const [current, setCurrent] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isHovered = useRef(false);
+
+  useEffect(() => {
+    if (sosProducts.length <= 1) return;
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (!isHovered.current) {
+      timerRef.current = setInterval(() => {
+        setCurrent(prev => (prev + 1) % sosProducts.length);
+      }, 3000);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [sosProducts.length, current]);
+
+  const handlePrev = () => setCurrent(prev => (prev - 1 + sosProducts.length) % sosProducts.length);
+  const handleNext = () => setCurrent(prev => (prev + 1) % sosProducts.length);
+
+  if (sosProducts.length === 0) return null;
+
+  return (
+    <div className="px-4 sm:px-6 lg:px-8 mt-12">
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-primary bg-opacity-10 rounded-lg p-6">
+          <div className="md:flex justify-between items-start">
+            <div className="mb-4 md:mb-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-primary mb-2">SOS Gifts</h2>
+              <p className="text-dark-600">Last-minute gifts delivered within hours</p>
+            </div>
+            <div
+              className="flex flex-col gap-4 relative"
+              onMouseEnter={() => { isHovered.current = true; if (timerRef.current) clearInterval(timerRef.current); }}
+              onMouseLeave={() => { isHovered.current = false; setCurrent(c => c); }}
+            >
+              <div className="relative flex items-center justify-center">
+                <div
+                  key={sosProducts[current].id}
+                  className="w-full transition-opacity duration-500"
+                  style={{ opacity: 1 }}
+                >
+                  <SOSProductCard
+                    imageUrl={sosProducts[current].images && sosProducts[current].images.length > 0 ? sosProducts[current].images[0] : undefined}
+                    title={sosProducts[current].name}
+                    deliveryTime={'Express Delivery'}
+                    price={sosProducts[current].price}
+                  />
+                </div>
+                {/* Carousel dots */}
+                {sosProducts.length > 1 && (
+                  <div className="absolute left-1/2 -bottom-6 transform -translate-x-1/2 flex gap-2">
+                    {sosProducts.map((_, idx) => (
+                      <span
+                        key={idx}
+                        className={`w-2 h-2 rounded-full transition-all duration-200 ${idx === current ? 'bg-primary' : 'bg-gray-300'}`}
+                      ></span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Artisan Card Component
 interface ArtisanCardProps {
@@ -311,7 +357,7 @@ const HomePage: React.FC = () => {
 
       <OccasionsSection ref={occasionsSectionRef} />
 
-      <SOSGiftsSection />
+      <SOSGiftsSection sosProducts={products.filter(p => p.sosDelivery)} />
 
       <div className="px-4 sm:px-6 lg:px-8 mt-12">
         <div className="max-w-7xl mx-auto">
@@ -457,33 +503,80 @@ const HomePage: React.FC = () => {
       <div className="mt-16 py-12 bg-sand-50">
         <h2 className="text-3xl font-extrabold text-dark mb-2 text-center tracking-tight">Shop by Category</h2>
         <p className="text-dark-500 text-center mb-10 text-lg">Discover unique handcrafted items by category</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
-          {[
+        {(() => {
+          // Define categories
+          const categories = [
             { name: 'Clothing', icon: '👗', color: 'bg-sage-100' },
             { name: 'Shoes', icon: '👟', color: 'bg-primary-100' },
             { name: 'Jewelry', icon: '💍', color: 'bg-sand-200' },
             { name: 'Home Decor', icon: '🏠', color: 'bg-sage-200' },
             { name: 'Art', icon: '🎨', color: 'bg-primary-50' },
-            { name: 'Accessories', icon: '👜', color: 'bg-sand-100' },
-            { name: 'Ceramics', icon: '🏺', color: 'bg-primary-200' },
+            { name: 'Cakes', icon: '🎂', color: 'bg-sand-100' },
             { name: 'Woodwork', icon: '🪵', color: 'bg-sage-50' },
-          ].map((cat) => (
-            <button
-              key={cat.name}
-              aria-label={`Shop ${cat.name}`}
-              className="group flex flex-col items-center justify-center p-6 rounded-2xl border border-sand-200 shadow bg-white transition transform hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              type="button"
-            >
-              <span className={`mb-4 flex items-center justify-center w-16 h-16 rounded-full text-4xl ${cat.color} group-hover:bg-primary-100 group-hover:scale-110 transition-all`}>
-                {cat.icon}
-              </span>
-              <span className="font-semibold text-lg text-dark group-hover:text-primary transition-colors">{cat.name}</span>
-            </button>
-          ))}
-        </div>
+          ];
+          // Logic for symmetrical rows: 1st row 4, 2nd row 3, center last row if needed
+          const firstRowCount = 4;
+          const secondRowCount = 3;
+          const rows = [];
+          rows.push(categories.slice(0, firstRowCount));
+          rows.push(categories.slice(firstRowCount, firstRowCount + secondRowCount));
+          // If last row has less than 3, pad with empty slots for symmetry
+          const lastRow = rows[1];
+          const emptySlots = secondRowCount - lastRow.length;
+          return (
+            <div className="flex flex-col gap-6 max-w-5xl mx-auto">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+                {rows[0].map((cat) => (
+                  <button
+                    key={cat.name}
+                    aria-label={`Shop ${cat.name}`}
+                    className="group flex flex-col items-center justify-center p-6 rounded-2xl border border-sand-200 shadow bg-white transition transform hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    type="button"
+                  >
+                    <span className={`mb-4 flex items-center justify-center w-16 h-16 rounded-full text-4xl ${cat.color} group-hover:bg-primary-100 group-hover:scale-110 transition-all`}>
+                      {cat.icon}
+                    </span>
+                    <span className="font-semibold text-lg text-dark group-hover:text-primary transition-colors">{cat.name}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-6 justify-center">
+                {/* Add empty slots to center the last row if needed */}
+                {emptySlots > 0 && Array(Math.floor(emptySlots / 2)).fill(null).map((_, idx) => (
+                  <div
+                    key={`empty-left-${idx}`}
+                    aria-hidden="true"
+                    className="p-6 rounded-2xl border border-sand-200 shadow bg-white opacity-0 pointer-events-none select-none"
+                  />
+                ))}
+                {lastRow.map((cat) => (
+                  <button
+                    key={cat.name}
+                    aria-label={`Shop ${cat.name}`}
+                    className="group flex flex-col items-center justify-center p-6 rounded-2xl border border-sand-200 shadow bg-white transition transform hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    type="button"
+                  >
+                    <span className={`mb-4 flex items-center justify-center w-16 h-16 rounded-full text-4xl ${cat.color} group-hover:bg-primary-100 group-hover:scale-110 transition-all`}>
+                      {cat.icon}
+                    </span>
+                    <span className="font-semibold text-lg text-dark group-hover:text-primary transition-colors">{cat.name}</span>
+                  </button>
+                ))}
+                {emptySlots > 0 && Array(Math.ceil(emptySlots / 2)).fill(null).map((_, idx) => (
+                  <div
+                    key={`empty-right-${idx}`}
+                    aria-hidden="true"
+                    className="p-6 rounded-2xl border border-sand-200 shadow bg-white opacity-0 pointer-events-none select-none"
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
 };
 
-export default HomePage; 
+export default HomePage;
+export {}; 

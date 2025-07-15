@@ -23,7 +23,8 @@ const AddProduct: React.FC = () => {
     tags: '',
     materials: '',
     occasion: '',
-    images: [] as string[]
+    images: [] as string[],
+    sosDelivery: false,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -68,7 +69,8 @@ const AddProduct: React.FC = () => {
         currency: userCurrency,
         attributes: {},
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        sosDelivery: form.sosDelivery,
       };
       
       const result = await createProduct(productData);
@@ -90,7 +92,8 @@ const AddProduct: React.FC = () => {
           tags: '',
           materials: '',
           occasion: '',
-          images: []
+          images: [],
+          sosDelivery: false,
         });
       }
     } catch (err: any) {
@@ -326,6 +329,19 @@ const AddProduct: React.FC = () => {
               />
               <label htmlFor="isCustomizable" className="ml-2 block text-sm text-gray-700">
                 This product can be customized
+              </label>
+            </div>
+            <div className="flex items-center mt-2">
+              <input
+                type="checkbox"
+                id="sosDelivery"
+                name="sosDelivery"
+                checked={form.sosDelivery}
+                onChange={handleChange}
+                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+              />
+              <label htmlFor="sosDelivery" className="ml-2 block text-sm text-dark-700">
+                SOS delivery
               </label>
             </div>
           </div>

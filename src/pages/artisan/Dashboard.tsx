@@ -113,19 +113,24 @@ const Dashboard: React.FC = () => {
                   <td colSpan={5} className="px-4 py-4 text-center text-dark-400">No recent orders found.</td>
               </tr>
               ) : (
-                recentOrders.map(order => (
-                  <tr key={order.id}>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">#{order.id}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">{customerNames[order.userId] || 'Customer'}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">{order.total?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
-                <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${order.status === 'delivered' ? 'bg-green-100 text-green-800' : order.status === 'shipped' ? 'bg-sage-100 text-sage-800' : order.status === 'processing' ? 'bg-primary-100 text-primary-800' : order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : ''}`}>
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                  </span>
-                </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-dark-500">{order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : ''}</td>
-              </tr>
-                ))
+                recentOrders.map(order => {
+                  // Calculate total for this artisan only
+                  const myItems = order.items?.filter((item: any) => item.artisanId === currentUser?.uid) || [];
+                  const myTotal = myItems.reduce((sum: number, item: any) => sum + (item.totalPrice || 0), 0);
+                  return (
+                    <tr key={order.id}>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">#{order.id}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">{customerNames[order.userId] || 'Customer'}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-dark">{myTotal.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs rounded-full ${order.status === 'delivered' ? 'bg-green-100 text-green-800' : order.status === 'shipped' ? 'bg-sage-100 text-sage-800' : order.status === 'processing' ? 'bg-primary-100 text-primary-800' : order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : ''}`}>
+                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-dark-500">{order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : ''}</td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

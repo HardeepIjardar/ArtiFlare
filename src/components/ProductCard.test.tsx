@@ -68,6 +68,8 @@ describe('ProductCard', () => {
     expect(screen.getByText('Test Description')).toBeInTheDocument();
     expect(screen.getByText('$99.99')).toBeInTheDocument();
     expect(screen.getByText('Test Artisan')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /View Details/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Add to Cart/i })).toBeInTheDocument();
   });
 
   it('navigates to product detail page when clicked', () => {
@@ -80,8 +82,8 @@ describe('ProductCard', () => {
   it('calls onAddToCart when add to cart button is clicked', () => {
     render(<ProductCard {...mockProps} />);
     
-    fireEvent.click(screen.getByText('Add to Cart'));
-    expect(mockProps.onAddToCart).toHaveBeenCalledWith(mockProduct);
+    fireEvent.click(screen.getByRole('button', { name: /Add to Cart/i }));
+    expect(mockProps.onAddToCart).toHaveBeenCalledWith('1');
   });
 
   it('shows quantity selector when product is in cart', () => {

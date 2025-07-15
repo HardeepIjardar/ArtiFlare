@@ -116,8 +116,8 @@ const AdminProducts: React.FC = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <a href="#" className="text-primary hover:text-primary-700 mr-4">Edit</a>
-                <a href="#" className="text-dark-500 hover:text-dark-700">Delete</a>
+                <button type="button" className="text-primary hover:text-primary-700 mr-4">Edit</button>
+                <button type="button" className="text-dark-500 hover:text-dark-700">Delete</button>
               </td>
             </tr>
             
@@ -146,8 +146,8 @@ const AdminProducts: React.FC = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <a href="#" className="text-primary hover:text-primary-700 mr-4">Edit</a>
-                <a href="#" className="text-dark-500 hover:text-dark-700">Delete</a>
+                <button type="button" className="text-primary hover:text-primary-700 mr-4">Edit</button>
+                <button type="button" className="text-dark-500 hover:text-dark-700">Delete</button>
               </td>
             </tr>
             
@@ -176,8 +176,8 @@ const AdminProducts: React.FC = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <a href="#" className="text-primary hover:text-primary-700 mr-4">Edit</a>
-                <a href="#" className="text-dark-500 hover:text-dark-700">Delete</a>
+                <button type="button" className="text-primary hover:text-primary-700 mr-4">Edit</button>
+                <button type="button" className="text-dark-500 hover:text-dark-700">Delete</button>
               </td>
             </tr>
             
@@ -206,8 +206,8 @@ const AdminProducts: React.FC = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <a href="#" className="text-primary hover:text-primary-700 mr-4">Edit</a>
-                <a href="#" className="text-dark-500 hover:text-dark-700">Delete</a>
+                <button type="button" className="text-primary hover:text-primary-700 mr-4">Edit</button>
+                <button type="button" className="text-dark-500 hover:text-dark-700">Delete</button>
               </td>
             </tr>
             
@@ -236,8 +236,8 @@ const AdminProducts: React.FC = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <a href="#" className="text-primary hover:text-primary-700 mr-4">Edit</a>
-                <a href="#" className="text-dark-500 hover:text-dark-700">Delete</a>
+                <button type="button" className="text-primary hover:text-primary-700 mr-4">Edit</button>
+                <button type="button" className="text-dark-500 hover:text-dark-700">Delete</button>
               </td>
             </tr>
           </tbody>

@@ -69,6 +69,7 @@ export interface ProductData {
     size?: boolean;
     material?: boolean;
   };
+  sosDelivery?: boolean;
 }
 
 export interface UserData {
@@ -203,6 +204,7 @@ const productSchema = z.object({
     size: z.boolean().optional(),
     material: z.boolean().optional(),
   }).optional(),
+  sosDelivery: z.boolean().optional(),
 });
 
 const orderItemSchema = z.object({
@@ -571,6 +573,7 @@ export const getProducts = async (
         ...(data.status && { status: data.status }),
         ...(data.shippingInfo && { shippingInfo: data.shippingInfo }),
         ...(data.customizationOptions && { customizationOptions: data.customizationOptions }),
+        ...(data.sosDelivery && { sosDelivery: data.sosDelivery }),
       } as ProductData; 
     });
     
@@ -901,6 +904,7 @@ export const getProductById = async (productId: string) => {
         ...(data.status && { status: data.status }),
         ...(data.shippingInfo && { shippingInfo: data.shippingInfo }),
         ...(data.customizationOptions && { customizationOptions: data.customizationOptions }),
+        ...(data.sosDelivery && { sosDelivery: data.sosDelivery }),
       };
       return { product: product, error: null };
     }
@@ -942,6 +946,7 @@ export const getProductsByArtisan = async (artisanId: string) => {
         ...(data.status && { status: data.status }),
         ...(data.shippingInfo && { shippingInfo: data.shippingInfo }),
         ...(data.customizationOptions && { customizationOptions: data.customizationOptions }),
+        ...(data.sosDelivery && { sosDelivery: data.sosDelivery }),
       };
     });
 

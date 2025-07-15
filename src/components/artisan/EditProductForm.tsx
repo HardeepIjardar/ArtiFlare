@@ -24,7 +24,8 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
     isCustomizable: product.isCustomizable,
     materials: product.materials?.join(', ') || '',
     occasion: product.occasion || '',
-    tags: (product.tags || []).join(', ')
+    tags: (product.tags || []).join(', '),
+    sosDelivery: product.sosDelivery || false,
   });
   // Filter out placeholder images from initial images
   const placeholderPatterns = [
@@ -95,7 +96,8 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
         materials: formData.materials ? formData.materials.split(',').map(material => material.trim()).filter(material => material) : undefined,
         occasion: formData.occasion || undefined,
-        images: images
+        images: images,
+        sosDelivery: formData.sosDelivery,
       };
 
       const result = await updateProduct(product.id, productData);
@@ -303,6 +305,19 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
               />
               <label htmlFor="isCustomizable" className="ml-2 block text-sm text-gray-700">
                 This product can be customized
+              </label>
+            </div>
+            <div className="flex items-center mt-2">
+              <input
+                type="checkbox"
+                id="sosDelivery"
+                name="sosDelivery"
+                checked={formData.sosDelivery}
+                onChange={handleChange}
+                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+              />
+              <label htmlFor="sosDelivery" className="ml-2 block text-sm text-dark-700">
+                SOS delivery
               </label>
             </div>
           </div>
