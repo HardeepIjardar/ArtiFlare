@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto');
+const Razorpay = require('razorpay');
 const app = express();
 const PORT = process.env.PORT || 5000;
 const SibApiV3Sdk = require('sib-api-v3-sdk');
@@ -21,11 +23,114 @@ app.use(cors({
     }
   },
 }));
-app.use(express.json());
+// IMPORTANT: Do NOT add express.json() before the webhook route.
+
+// Initialize Razorpay client
+const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET;
+let razorpay;
+if (razorpayKeyId && razorpayKeySecret) {
+  razorpay = new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret });
+}
 
 // Health check
 app.get('/', (req, res) => {
   res.send('API is running');
+});
+
+// Razorpay: Webhook endpoint (optional - for reconciliation)
+// Note: For best security, configure this route with express.raw and verify against RAZORPAY_WEBHOOK_SECRET.
+app.post('/api/razorpay/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const signature = req.header('x-razorpay-signature');
+
+    if (!webhookSecret || !signature) {
+      return res.status(400).json({ message: 'Missing webhook secret or signature' });
+    }
+
+    // Using JSON string for signature computation (ensure body ordering is preserved)
+    const body = req.body instanceof Buffer ? req.body.toString('utf8') : JSON.stringify(req.body);
+    const digest = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(body)
+      .digest('hex');
+
+    if (digest !== signature) {
+      return res.status(400).json({ message: 'Invalid webhook signature' });
+    }
+
+    // Acknowledge receipt; add reconciliation logic here as needed
+    try {
+      const parsed = JSON.parse(body);
+      console.log('Razorpay webhook verified:', parsed?.event);
+    } catch (_) {
+      console.log('Razorpay webhook verified');
+    }
+    return res.status(200).json({ received: true });
+  } catch (error) {
+    console.error('Razorpay webhook error:', error);
+    return res.status(500).json({ message: 'Webhook handling failed', error: error.message });
+  }
+});
+
+// Now enable JSON body parsing for other routes
+app.use(express.json());
+
+// Razorpay: Create order
+app.post('/api/razorpay/create-order', async (req, res) => {
+  try {
+    if (!razorpay) {
+      return res.status(500).json({ message: 'Razorpay not configured on server' });
+    }
+
+    const { amount, currency = 'INR', receipt, notes } = req.body || {};
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ message: 'Invalid amount' });
+    }
+
+    const order = await razorpay.orders.create({
+      amount, // Amount in paise
+      currency,
+      receipt: receipt || `rcpt_${Date.now()}`,
+      notes: notes || {},
+    });
+
+    return res.status(200).json({
+      success: true,
+      order,
+      key: razorpayKeyId,
+    });
+  } catch (error) {
+    console.error('Error creating Razorpay order:', error);
+    return res.status(500).json({ message: 'Failed to create Razorpay order', error: error.message });
+  }
+});
+
+// Razorpay: Verify payment signature
+app.post('/api/razorpay/verify-payment', async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ message: 'Missing payment verification fields' });
+    }
+
+    const payload = `${razorpay_order_id}|${razorpay_payment_id}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', razorpayKeySecret || '')
+      .update(payload)
+      .digest('hex');
+
+    const isValid = expectedSignature === razorpay_signature;
+    if (!isValid) {
+      return res.status(400).json({ success: false, message: 'Invalid signature' });
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error verifying Razorpay signature:', error);
+    return res.status(500).json({ message: 'Failed to verify payment', error: error.message });
+  }
 });
 
 // Configure Brevo (Sendinblue) API
