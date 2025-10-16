@@ -41,7 +41,7 @@ ArtiFlare is a comprehensive e-commerce solution that enables artisans to showca
 - **State Management**: React Context API
 - **Backend/API**: Express.js (Node.js)
 - **Database & Auth**: Firebase (Authentication, Firestore, Storage)
-- **Payment Processing**: Stripe API integration
+- **Payment Processing**: Razorpay (primary) and Stripe (legacy)
 - **Form Handling**: React Hook Form with Zod validation
 - **Testing**: React Testing Library, Jest
 - **Email**: Brevo (Sendinblue) transactional emails
@@ -97,6 +97,16 @@ Custom branded color palette:
    REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
    REACT_APP_FIREBASE_APP_ID=your_app_id
    REACT_APP_FIREBASE_MEASUREMENT_ID=your_measurement_id
+   
+   # Frontend -> Backend base URL (no trailing slash)
+   REACT_APP_API_BASE_URL=https://your-backend-hostname.com
+
+   # Razorpay keys
+   RAZORPAY_KEY_ID=your_razorpay_key_id
+   RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+   RAZORPAY_WEBHOOK_SECRET=your_razorpay_webhook_secret
+
+   # (Optional) Stripe legacy key
    REACT_APP_STRIPE_PUBLIC_KEY=your_stripe_public_key
    BREVO_API_KEY=your_brevo_api_key
    BREVO_SENDER_EMAIL=your_sender_email
@@ -118,11 +128,11 @@ Custom branded color palette:
    yarn start
    ```
 
-7. **Start the backend server (for order emails):**
+7. **Start the backend server (payments + emails):**
    ```bash
    npm run server
    ```
-   This runs `server.js` on port 5000 by default.
+   This runs `server.js` on port 5000 by default. Ensure Razorpay env vars are set.
 
 8. **Open [http://localhost:3000](http://localhost:3000)** to view the application in your browser.
 

@@ -7,6 +7,12 @@ import type { UserData, OrderItem, Address } from '../../services/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { useCurrency } from '../../contexts/CurrencyContext';
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 const CheckoutPage: React.FC = () => {
   const { currentUser } = useAuth();
   const { cartItems, cartTotal, clearCart } = useCart();
@@ -44,6 +50,20 @@ const CheckoutPage: React.FC = () => {
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
+
+  const API_BASE = (process.env.REACT_APP_API_BASE_URL || '').replace(/\/$/, '');
+
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (document.getElementById('razorpay-checkout-js')) return resolve(true);
+      const script = document.createElement('script');
+      script.id = 'razorpay-checkout-js';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -285,7 +305,7 @@ const CheckoutPage: React.FC = () => {
       // Collect unique artisanIds from orderItems
       const artisanIds = Array.from(new Set(orderItems.map(item => item.artisanId)));
 
-      const orderData = {
+      const baseOrderData = {
         userId: currentUser.uid,
         items: orderItems,
         artisanIds,
@@ -303,61 +323,177 @@ const CheckoutPage: React.FC = () => {
       };
 
       // Clean orderData to remove any undefined fields before sending to Firestore
-      const cleanedOrderData = removeUndefined(orderData);
+      const cleanedOrderData = removeUndefined(baseOrderData);
 
-      console.log("Order data being sent to Firestore:", JSON.stringify(cleanedOrderData, null, 2));
-
-      const result = await processOrder(cleanedOrderData, orderItems);
-
-      if (result?.id) {
-        // 1. Fetch artisan data (assuming all items are from the same artisan)
-        const artisanId = cartItems[0]?.artisan;
-        let artisanData = null;
-        if (artisanId) {
-          const artisanResult = await getUserData(artisanId);
-          artisanData = artisanResult.userData;
-        }
-
-        // 2. Prepare email payload
-        const emailPayload = {
-          customer: {
-            email: userData.email,
-            name: userData.displayName || userData.email,
-          },
-          artisan: {
-            email: artisanData?.email || '',
-            name: artisanData?.companyName || artisanData?.displayName || 'Artisan',
-          },
-          order: {
-            id: result.id,
-            products: cartItems.map(item => ({
-              name: item.name,
-              image: item.image || '',
-              price: item.price,
-              quantity: item.quantity,
-            })),
-            total: orderTotal,
-            date: new Date().toLocaleDateString(),
+      // If COD, process order directly
+      if (selectedPaymentMethod === 'cod') {
+        console.log("Order data being sent to Firestore:", JSON.stringify(cleanedOrderData, null, 2));
+        const result = await processOrder(cleanedOrderData, orderItems);
+        if (result?.id) {
+          const artisanId = cartItems[0]?.artisan;
+          let artisanData = null;
+          if (artisanId) {
+            const artisanResult = await getUserData(artisanId);
+            artisanData = artisanResult.userData;
           }
-        };
+          const emailPayload = {
+            customer: {
+              email: userData.email,
+              name: userData.displayName || userData.email,
+            },
+            artisan: {
+              email: artisanData?.email || '',
+              name: artisanData?.companyName || artisanData?.displayName || 'Artisan',
+            },
+            order: {
+              id: result.id,
+              products: cartItems.map(item => ({
+                name: item.name,
+                image: item.image || '',
+                price: item.price,
+                quantity: item.quantity,
+              })),
+              total: orderTotal,
+              date: new Date().toLocaleDateString(),
+            }
+          };
+          try {
+            await fetch('https://artiflare-backend.onrender.com/api/send-order-emails', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(emailPayload),
+            });
+          } catch (err) {
+            console.error('Failed to send order emails:', err);
+            setEmailWarning('Order placed, but confirmation email could not be sent. Please contact support if you do not receive an email.');
+          }
+          setOrderSuccess('Order placed successfully!');
+          clearCart();
+          navigate('/thank-you');
+        }
+        return;
+      }
 
-        // 3. Call the backend email API
-        try {
-          await fetch('https://artiflare-backend.onrender.com/api/send-order-emails', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(emailPayload),
-          });
-        } catch (err) {
-          console.error('Failed to send order emails:', err);
-          setEmailWarning('Order placed, but confirmation email could not be sent. Please contact support if you do not receive an email.');
+      // Razorpay flow
+      if (selectedPaymentMethod === 'razorpay') {
+        // 1) Load Razorpay script
+        const loaded = await loadRazorpayScript();
+        if (!loaded) {
+          throw new Error('Failed to load Razorpay SDK. Please refresh and try again.');
         }
 
-        // 4. Continue with your existing logic
-        setOrderSuccess('Order placed successfully!');
-        clearCart(); // Empty the customer's cart
-        navigate('/thank-you'); // Redirect to the new thank you page
-      } 
+        // 2) Create order on backend (amount in paise)
+        const amountInPaise = Math.round(convertPrice(orderTotal, 'INR') * 100);
+        if (!API_BASE) {
+          throw new Error('Backend API base URL is not configured.');
+        }
+        const createRes = await fetch(`${API_BASE}/api/razorpay/create-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: amountInPaise, currency: 'INR', notes: { userId: currentUser.uid } }),
+        });
+        if (!createRes.ok) {
+          const err = await createRes.json().catch(() => ({}));
+          throw new Error(err?.message || 'Failed to create payment order');
+        }
+        const { key, order } = await createRes.json();
+
+        // 3) Open Razorpay Checkout and wait for success
+        await new Promise<void>((resolve, reject) => {
+          const options: any = {
+            key,
+            amount: order.amount,
+            currency: order.currency,
+            name: 'Artiflare',
+            description: 'Order Payment',
+            order_id: order.id,
+            prefill: {
+              name: userData.displayName || userData.email,
+              email: userData.email,
+              contact: selectedAddressData.phoneNumber || '',
+            },
+            notes: { userId: currentUser.uid },
+            theme: { color: '#d7263d' },
+            handler: async (response: any) => {
+              try {
+                // 4) Verify signature on backend
+                const verifyRes = await fetch(`${API_BASE}/api/razorpay/verify-payment`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                  }),
+                });
+                const verifyJson = await verifyRes.json();
+                if (!verifyRes.ok || !verifyJson?.success) {
+                  return reject(new Error(verifyJson?.message || 'Payment verification failed'));
+                }
+
+                // 5) Payment verified -> create order in Firestore with paid status
+                const paidOrderData = removeUndefined({
+                  ...cleanedOrderData,
+                  paymentMethod: 'razorpay',
+                  paymentStatus: 'paid' as const,
+                });
+                const result = await processOrder(paidOrderData, orderItems);
+                if (!result?.id) {
+                  return reject(new Error('Failed to create order after payment'));
+                }
+
+                // Send emails (best-effort)
+                try {
+                  const artisanId = cartItems[0]?.artisan;
+                  let artisanData = null;
+                  if (artisanId) {
+                    const artisanResult = await getUserData(artisanId);
+                    artisanData = artisanResult.userData;
+                  }
+                  const emailPayload = {
+                    customer: { email: userData.email, name: userData.displayName || userData.email },
+                    artisan: { email: artisanData?.email || '', name: artisanData?.companyName || artisanData?.displayName || 'Artisan' },
+                    order: {
+                      id: result.id,
+                      products: cartItems.map(item => ({ name: item.name, image: item.image || '', price: item.price, quantity: item.quantity })),
+                      total: orderTotal,
+                      date: new Date().toLocaleDateString(),
+                    }
+                  };
+                  await fetch('https://artiflare-backend.onrender.com/api/send-order-emails', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(emailPayload),
+                  });
+                } catch (err) {
+                  console.error('Failed to send order emails:', err);
+                  setEmailWarning('Order placed, but confirmation email could not be sent.');
+                }
+
+                setOrderSuccess('Payment successful! Order placed.');
+                clearCart();
+                navigate('/thank-you');
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
+            },
+            modal: {
+              ondismiss: () => {
+                reject(new Error('Payment cancelled'));
+              }
+            }
+          };
+          const rzp = new window.Razorpay(options);
+          rzp.on && rzp.on('payment.failed', (resp: any) => {
+            reject(new Error(resp?.error?.description || 'Payment failed'));
+          });
+          rzp.open();
+        });
+        return;
+      }
+      
+      throw new Error('Unsupported payment method');
     } catch (error: any) {
       let message = error?.message || 'Failed to place order: An unknown error occurred';
       if (error?.code === 'insufficient-inventory') {
@@ -672,6 +808,26 @@ const CheckoutPage: React.FC = () => {
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-bold text-dark mb-4">Payment Method</h2>
             <div className="space-y-4">
+              {/* Razorpay (Online) */}
+              <div className="p-4 border border-gray-200 rounded-lg">
+                <div className="flex items-center">
+                  <input
+                    id="razorpay"
+                    name="paymentMethod"
+                    type="radio"
+                    checked={selectedPaymentMethod === 'razorpay'}
+                    onChange={() => handlePaymentMethodChange('razorpay')}
+                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
+                  />
+                  <label htmlFor="razorpay" className="ml-3">
+                    <span className="text-dark font-medium">Pay Online (Razorpay)</span>
+                  </label>
+                </div>
+                {!API_BASE && (
+                  <p className="text-xs text-red-600 mt-2">Backend URL not configured. Set REACT_APP_API_BASE_URL.</p>
+                )}
+              </div>
+
               {/* COD */}
               <div className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex items-center">
